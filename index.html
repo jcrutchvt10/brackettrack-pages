@@ -2118,11 +2118,22 @@ function buildContestsUrl(cfg, contestDate) {
   return `${NCAA_GRAPHQL_BASE}?${query}`;
 }
 
+async function fetchJsonWithTimeout(url, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function fetchJsonWithFallback(url) {
   const errors = [];
 
   try {
-    const direct = await fetch(url);
+    const direct = await fetchJsonWithTimeout(url);
     if (direct.ok) return direct.json();
     if (direct.status === 404) {
       throw new Error(ESPN_GROUP_NOT_AVAILABLE);
@@ -2138,7 +2149,7 @@ async function fetchJsonWithFallback(url) {
   for (const prefix of CORS_PROXY_PREFIXES) {
     try {
       const proxyUrl = `${prefix}${encodeURIComponent(url)}`;
-      const viaProxy = await fetch(proxyUrl);
+      const viaProxy = await fetchJsonWithTimeout(proxyUrl);
       if (!viaProxy.ok) {
         errors.push(`proxy:${viaProxy.status}`);
         continue;
