@@ -2034,21 +2034,6 @@ function initTracker() {
     renderGroupCompare(currentGroupByTab[activeTab]);
     updateStandings();
   }
-  const payload = {
-    bracket: activeTab,
-    exportedAt: new Date().toISOString(),
-    results: actualResults
-  };
-
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `ncaa-${activeTab}-results.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 function importResultsFromFile(file) {
