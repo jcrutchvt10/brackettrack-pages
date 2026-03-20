@@ -1544,13 +1544,7 @@ function initTracker() {
   currentStatsByTab[activeTab] = trackerStats;
 
   const activeStats = getActivePerspectiveStats(trackerStats);
-  document.getElementById('valTotalPts').textContent = activeStats.totalPts;
-  document.getElementById('valPPR').textContent = activeStats.ppr;
-  document.getElementById('valMaxPts').textContent = activeStats.maxPts;
-  document.getElementById('valWins').textContent = activeStats.wins;
-  document.getElementById('valLosses').textContent = activeStats.losses;
-  document.getElementById('valPlayed').textContent = activeStats.gamesPlayed;
-  document.getElementById('valAccuracy').textContent = activeStats.accuracy;
+  renderHeaderStats(activeStats);
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === activeTab);
@@ -1818,6 +1812,40 @@ function refreshPerspectiveSelect() {
   if (!hasDesired) savePerspective(activeTab, TRACKER_PERSPECTIVE_VALUE);
 }
 
+function renderHeaderStats(stats) {
+  if (!stats) return;
+
+  document.getElementById('valTotalPts').textContent = stats.totalPts;
+  document.getElementById('valPPR').textContent = stats.ppr;
+  document.getElementById('valMaxPts').textContent = stats.maxPts;
+  document.getElementById('valWins').textContent = stats.wins;
+  document.getElementById('valLosses').textContent = stats.losses;
+  document.getElementById('valPlayed').textContent = stats.gamesPlayed;
+  document.getElementById('valAccuracy').textContent = stats.accuracy;
+}
+
+async function fetchEspnGroupCompareForTab(tab) {
+  const groupId = LOCKED_ESPN_GROUP_ID;
+  const challengeKey = getChallengeKeyForTab(tab);
+  const url = `https://gambit-api.fantasy.espn.com/apis/v1/challenges/${challengeKey}/groups/${groupId}?scoringPeriodId=-1&platform=chui&view=group`;
+
+  const payload = await fetchJsonWithFallback(url);
+  currentGroupByTab[tab] = payload;
+  return payload;
+}
+
+function refreshActivePerspectiveView() {
+  const trackerStats = currentStatsByTab[activeTab];
+  if (!trackerStats) return;
+
+  renderHeaderStats(getActivePerspectiveStats(trackerStats));
+  refreshPerspectiveSelect();
+
+  if (currentGroupByTab[activeTab]) {
+    renderGroupCompare(currentGroupByTab[activeTab]);
+  }
+}
+
 function renderGroupCompare(groupPayload) {
   const wrap = document.getElementById('compareTableWrap');
   const meta = document.getElementById('compareMeta');
@@ -1921,15 +1949,10 @@ async function loadEspnGroupCompare() {
   const groupId = LOCKED_ESPN_GROUP_ID;
   input.value = groupId;
 
-  const challengeKey = getChallengeKeyForTab(activeTab);
-  const url = `https://gambit-api.fantasy.espn.com/apis/v1/challenges/${challengeKey}/groups/${groupId}?scoringPeriodId=-1&platform=chui&view=group`;
-
   meta.textContent = 'Loading group standings...';
   try {
-    const payload = await fetchJsonWithFallback(url);
-    currentGroupByTab[activeTab] = payload;
-    refreshPerspectiveSelect();
-    renderGroupCompare(payload);
+    await fetchEspnGroupCompareForTab(activeTab);
+    refreshActivePerspectiveView();
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     meta.textContent = `Failed to load group: ${msg}`;
@@ -2102,19 +2125,27 @@ async function runLiveSync(options = {}) {
     const total = men.updated + women.updated;
     const errors = men.fetchErrors + women.fetchErrors;
 
+    const groupRefreshResults = await Promise.allSettled([
+      fetchEspnGroupCompareForTab('men'),
+      fetchEspnGroupCompareForTab('women')
+    ]);
+    const groupRefreshErrors = groupRefreshResults.filter(result => result.status === 'rejected').length;
+
     loadResults();
     initTracker();
+    refreshActivePerspectiveView();
 
     const syncSummary = total > 0
       ? `Updated ${total} game${total === 1 ? '' : 's'} just now`
       : `Checked live scores just now${errors ? ` with ${errors} fetch issue${errors === 1 ? '' : 's'}` : ''}`;
-    setSyncStatus(errors > 0 && total === 0 ? 'error' : 'success', syncSummary);
+    const syncNote = groupRefreshErrors ? `${syncSummary}; ${groupRefreshErrors} group refresh issue${groupRefreshErrors === 1 ? '' : 's'}` : syncSummary;
+    setSyncStatus((errors > 0 || groupRefreshErrors > 0) && total === 0 ? 'error' : 'success', syncNote);
 
     if (showAlerts) {
       if (total > 0) {
-        alert(`Live sync complete. Updated ${men.updated} Men and ${women.updated} Women games.${errors ? ` (${errors} date fetches failed)` : ''}`);
+        alert(`Live sync complete. Updated ${men.updated} Men and ${women.updated} Women games.${errors ? ` (${errors} date fetches failed)` : ''}${groupRefreshErrors ? ` (${groupRefreshErrors} group refreshes failed)` : ''}`);
       } else {
-        alert(`Live sync complete. No new finalized games matched your bracket yet.${errors ? ` (${errors} date fetches failed)` : ''}`);
+        alert(`Live sync complete. No new finalized games matched your bracket yet.${errors ? ` (${errors} date fetches failed)` : ''}${groupRefreshErrors ? ` (${groupRefreshErrors} group refreshes failed)` : ''}`);
       }
     }
   } catch (err) {
