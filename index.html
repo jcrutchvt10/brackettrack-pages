@@ -290,6 +290,16 @@
     gap: 2px;
   }
 
+  .match-node.match-correct {
+    background: rgba(216, 251, 230, 0.45);
+    border-color: rgba(15, 90, 56, 0.26);
+  }
+
+  .match-node.match-wrong {
+    background: rgba(255, 225, 225, 0.45);
+    border-color: rgba(142, 30, 30, 0.24);
+  }
+
   .match-node .pick-flag {
     font-weight: 700;
     color: var(--accent);
@@ -953,6 +963,19 @@ function gameStatus(game, eliminatedTeams) {
 function renderTree(region) {
   const rounds = [0, 1, 2, 3];
   let html = '<div class="tree-wrap"><div class="tree-grid">';
+  const eliminatedTeams = new Set();
+
+  region.games.forEach(g => {
+    const res = actualResults[g.id];
+    if (!res?.winner) return;
+
+    if (res.loser) {
+      eliminatedTeams.add(stripSeed(res.loser));
+    } else {
+      const loser = getLoserForGame(g, res.winner);
+      if (loser) eliminatedTeams.add(stripSeed(loser));
+    }
+  });
 
   rounds.forEach(round => {
     const games = getRegionRoundGames(region.games, round);
@@ -961,8 +984,12 @@ function renderTree(region) {
     games.forEach(game => {
       const pick = stripSeed(game.pick);
       const winner = actualResults[game.id]?.winner || 'TBD';
+      const status = gameStatus(game, eliminatedTeams);
+      let nodeClass = '';
+      if (status.statusClass === 'status-correct') nodeClass = ' match-correct';
+      if (status.statusClass === 'status-wrong') nodeClass = ' match-wrong';
       html += `
-        <div class="match-node">
+        <div class="match-node${nodeClass}">
           <div>${stripSeed(game.t1)} vs ${stripSeed(game.t2)}</div>
           <div class="pick-flag">Pick: ${pick}</div>
           <div>Result: ${winner}</div>
