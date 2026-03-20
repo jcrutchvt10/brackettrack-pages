@@ -134,7 +134,7 @@
 
   .compare-controls {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr;
     gap: 8px;
     margin-bottom: 10px;
   }
@@ -521,9 +521,8 @@
   <div class="compare-card">
     <div class="compare-controls">
       <input class="compare-input" id="espnGroupIdInput" placeholder="ESPN Group ID (UUID)" readonly>
-      <button class="action-btn" id="btnLoadGroup">Load Group Compare</button>
     </div>
-    <div class="compare-meta" id="compareMeta">Locked to your ESPN group ID for one-click compare.</div>
+    <div class="compare-meta" id="compareMeta">Auto-loading ESPN group comparison using your locked group ID.</div>
     <div class="compare-table-wrap" id="compareTableWrap"></div>
   </div>
 
@@ -1556,10 +1555,6 @@ function bindEvents() {
       document.getElementById('espnGroupIdInput').value = LOCKED_ESPN_GROUP_ID;
       loadResults();
       initTracker();
-      return;
-    }
-
-    if (target.id === 'btnLoadGroup') {
       loadEspnGroupCompare();
       return;
     }
@@ -1630,6 +1625,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadResults();
   bindEvents();
   initTracker();
+  loadEspnGroupCompare();
 });
 </script>
 </body>
