@@ -2581,17 +2581,25 @@ function generateStandingsCommentary(entries, myStats) {
     () => `${leaderName} is running away with this like they're escaping a horror movie. Terrifying.`,
     () => `${leaderName} really said "I'm built different" and the standings prove it. Respect.`,
     () => `${leaderName} is on a different plane of existence. We're just watching greatness here.`,
+    () => `${leaderName} is handing out emotional damage like it's a buy-one-get-one special.`,
+    () => `${leaderName} is up top living in a penthouse while the rest of us argue in the parking lot.`,
+    () => `${leaderName} is so far ahead this leaderboard needs long-distance charges.`,
     
     // Gap comments (if there's a big gap)
     () => gap > 200 ? `The gap between 1st and the pack is wider than my attention span. Brutal.` : null,
     () => gap > 150 ? `${leaderName} left the rest of us in the dust. We can't even see them anymore.` : null,
     () => gap > 100 ? `It's not a blowout yet, but ${leaderName} is getting comfortable up there.` : null,
+    () => gap > 180 ? `At this point catching ${leaderName} requires miracles, math, and maybe a legal team.` : null,
+    () => gap > 120 ? `That gap is old enough to vote. Someone close it before it gets worse.` : null,
     
     // Mid-pack trash talk
     () => `The middle of the standings is a bloodbath. Everyone's within striking distance—which means nobody's safe.`,
     () => `The gap between 1st and 10th could fit a whole tournament bracket. Sheesh.`,
     () => `It's anyone's game down here in the mid-pack. Just pure chaos and bracket luck.`,
     () => `The bottom 3 are fighting like seagulls over french fries. Absolutely ruthless.`,
+    () => `Mid-pack right now is just people refreshing scores and pretending they meant to pick that upset.`,
+    () => `This leaderboard has more mood swings than a group chat after midnight.`,
+    () => `Some of these picks aged like milk in a hot car.`,
     
     // Personal comments (if user data available)
     () => myRank && myRank === 1 ? `👑 YOU ARE THE CHAMPION. Don't screw this up.` : null,
@@ -2599,12 +2607,19 @@ function generateStandingsCommentary(entries, myStats) {
     () => myRank && myRank <= 5 ? `Not bad! You're in the hunt. Keep those picks sharp.` : null,
     () => myRank && myRank <= 10 ? `You're hanging in there. The comeback starts now (probably won't happen but you never know).` : null,
     () => myRank && myRank > 10 ? `Hey, there's still time. Stranger things have happened. Actually, no they haven't.` : null,
+    () => myRank && myRank === 1 ? `Top spot secured. Talk your trash now before the next round humbles everyone.` : null,
+    () => myRank && myRank <= 3 ? `You're on the podium, which is great because pressure only makes people weird.` : null,
+    () => myRank && myRank > 8 ? `You're not dead, but your bracket is currently on life support and a prayer.` : null,
+    () => myRank && myRank > 12 ? `You are in the character-building portion of this tournament. Stay strong.` : null,
     
     // Meta comments
     () => `These brackets are playing mind games. ${entries.length} people, same games, completely different outcomes.`,
     () => `Whoever predicted this standings order is a liar. We're all just gambling at this point.`,
     () => `The butterfly effect is real. One wrong pick in Round 1 and you're bleeding points.`,
     () => `Chart behavior like you're a poker player trying to read tells. These rankings are TENSE.`,
+    () => `One coin-flip game can turn this whole board into therapy material.`,
+    () => `Every "easy pick" this year has been a trap with good marketing.`,
+    () => `This season is proof that confidence and correctness are barely on speaking terms.`,
   ];
 
   // Filter out null values and pick a random one
