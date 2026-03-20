@@ -949,6 +949,7 @@ const ESPN_CHALLENGE_KEYS = {
   women: 'tournament-challenge-bracket-women-2026'
 };
 const LOCKED_ESPN_GROUP_ID = 'ff8fedde-7a81-467c-8b5b-a735ddbba0c5';
+const ESPN_GROUP_NOT_AVAILABLE = '__ESPN_GROUP_NOT_AVAILABLE__';
 const TRACKER_PERSPECTIVE_VALUE = '__tracker__';
 const AUTO_POLL_INTERVAL_MS = 120000;
 const AUTO_POLL_DAYS_BACK = 1;
@@ -1663,8 +1664,14 @@ async function fetchJsonWithFallback(url) {
   try {
     const direct = await fetch(url);
     if (direct.ok) return direct.json();
+    if (direct.status === 404) {
+      throw new Error(ESPN_GROUP_NOT_AVAILABLE);
+    }
     errors.push(`direct:${direct.status}`);
   } catch (err) {
+    if (err instanceof Error && err.message === ESPN_GROUP_NOT_AVAILABLE) {
+      throw err;
+    }
     errors.push(`direct:${err instanceof Error ? err.message : String(err)}`);
   }
 
@@ -1954,6 +1961,13 @@ async function loadEspnGroupCompare() {
     await fetchEspnGroupCompareForTab(activeTab);
     refreshActivePerspectiveView();
   } catch (err) {
+    if (err instanceof Error && err.message === ESPN_GROUP_NOT_AVAILABLE) {
+      currentGroupByTab[activeTab] = null;
+      document.getElementById('compareTableWrap').innerHTML = '';
+      meta.textContent = `No ESPN group is available for the ${BRACKETS[activeTab].label} tab with the locked group ID.`;
+      return;
+    }
+
     const msg = err instanceof Error ? err.message : String(err);
     meta.textContent = `Failed to load group: ${msg}`;
   }
@@ -2129,7 +2143,7 @@ async function runLiveSync(options = {}) {
       fetchEspnGroupCompareForTab('men'),
       fetchEspnGroupCompareForTab('women')
     ]);
-    const groupRefreshErrors = groupRefreshResults.filter(result => result.status === 'rejected').length;
+    const groupRefreshErrors = groupRefreshResults.filter(result => result.status === 'rejected' && (!(result.reason instanceof Error) || result.reason.message !== ESPN_GROUP_NOT_AVAILABLE)).length;
 
     loadResults();
     initTracker();
