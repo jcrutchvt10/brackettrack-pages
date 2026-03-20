@@ -148,6 +148,15 @@
     background: #fff;
   }
 
+  .compare-select {
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 0.88rem;
+    color: var(--ink-900);
+    background: #fff;
+  }
+
   .compare-meta {
     font-size: 0.78rem;
     color: var(--ink-500);
@@ -538,6 +547,9 @@
   <div class="compare-card">
     <div class="compare-controls">
       <input class="compare-input" id="espnGroupIdInput" placeholder="ESPN Group ID (UUID)" readonly>
+      <select class="compare-select" id="perspectiveSelect">
+        <option value="__tracker__">Perspective: My Tracker Picks</option>
+      </select>
     </div>
     <div class="compare-meta" id="compareMeta">Auto-loading ESPN group comparison using your locked group ID.</div>
     <div class="compare-table-wrap" id="compareTableWrap"></div>
@@ -569,6 +581,7 @@ const ESPN_CHALLENGE_KEYS = {
   women: 'tournament-challenge-bracket-women-2026'
 };
 const LOCKED_ESPN_GROUP_ID = 'ff8fedde-7a81-467c-8b5b-a735ddbba0c5';
+const TRACKER_PERSPECTIVE_VALUE = '__tracker__';
 const AUTO_POLL_INTERVAL_MS = 120000;
 const AUTO_POLL_DAYS_BACK = 1;
 const AUTO_POLL_DAYS_FORWARD = 1;
@@ -794,6 +807,7 @@ let actualResults = {};
 let liveStates = { men: {}, women: {} };
 let currentStatsByTab = { men: null, women: null };
 let currentGroupByTab = { men: null, women: null };
+let selectedPerspectiveByTab = { men: TRACKER_PERSPECTIVE_VALUE, women: TRACKER_PERSPECTIVE_VALUE };
 let autoPollTimer = null;
 let liveSyncInFlight = false;
 
@@ -1146,26 +1160,31 @@ function initTracker() {
   document.getElementById('regionContainer').innerHTML = regionHtml;
   document.getElementById('finalsContainer').innerHTML = renderFinals(finalsRegion, eliminatedTeams);
 
-  document.getElementById('valTotalPts').textContent = totalPts;
-  document.getElementById('valPPR').textContent = ppr;
-  document.getElementById('valMaxPts').textContent = totalPts + ppr;
-  document.getElementById('valWins').textContent = wins;
-  document.getElementById('valLosses').textContent = losses;
-  document.getElementById('valPlayed').textContent = gamesPlayed;
-  document.getElementById('valAccuracy').textContent = gamesPlayed ? `${Math.round((wins / gamesPlayed) * 100)}%` : '0%';
-
-  currentStatsByTab[activeTab] = {
+  const trackerStats = {
     totalPts,
     ppr,
     maxPts: totalPts + ppr,
     wins,
     losses,
-    gamesPlayed
+    gamesPlayed,
+    accuracy: gamesPlayed ? `${Math.round((wins / gamesPlayed) * 100)}%` : '0%'
   };
+  currentStatsByTab[activeTab] = trackerStats;
+
+  const activeStats = getActivePerspectiveStats(trackerStats);
+  document.getElementById('valTotalPts').textContent = activeStats.totalPts;
+  document.getElementById('valPPR').textContent = activeStats.ppr;
+  document.getElementById('valMaxPts').textContent = activeStats.maxPts;
+  document.getElementById('valWins').textContent = activeStats.wins;
+  document.getElementById('valLosses').textContent = activeStats.losses;
+  document.getElementById('valPlayed').textContent = activeStats.gamesPlayed;
+  document.getElementById('valAccuracy').textContent = activeStats.accuracy;
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === activeTab);
   });
+
+  refreshPerspectiveSelect();
 
   if (currentGroupByTab[activeTab]) {
     renderGroupCompare(currentGroupByTab[activeTab]);
@@ -1327,6 +1346,20 @@ function getGroupIdStorageKey(tab) {
   return `espn-group-id-${tab}`;
 }
 
+function getPerspectiveStorageKey(tab) {
+  return `espn-perspective-${tab}`;
+}
+
+function loadPerspective(tab) {
+  const saved = localStorage.getItem(getPerspectiveStorageKey(tab));
+  selectedPerspectiveByTab[tab] = saved || TRACKER_PERSPECTIVE_VALUE;
+}
+
+function savePerspective(tab, value) {
+  selectedPerspectiveByTab[tab] = value;
+  localStorage.setItem(getPerspectiveStorageKey(tab), value);
+}
+
 function getChallengeKeyForTab(tab) {
   return ESPN_CHALLENGE_KEYS[tab];
 }
@@ -1345,10 +1378,61 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function getEspnEntryStats(entry) {
+  if (!entry?.score) return null;
+
+  const wins = Number(entry.score?.record?.wins || 0);
+  const losses = Number(entry.score?.record?.losses || 0);
+  const gamesPlayed = wins + losses;
+
+  return {
+    totalPts: Number(entry.score?.overallScore || 0),
+    ppr: Number(entry.score?.possiblePointsRemaining || 0),
+    maxPts: Number(entry.score?.possiblePointsMax || 0),
+    wins,
+    losses,
+    gamesPlayed,
+    accuracy: gamesPlayed ? `${Math.round((wins / gamesPlayed) * 100)}%` : '0%'
+  };
+}
+
+function getActivePerspectiveStats(defaultStats) {
+  const selectedId = selectedPerspectiveByTab[activeTab] || TRACKER_PERSPECTIVE_VALUE;
+  if (selectedId === TRACKER_PERSPECTIVE_VALUE) return defaultStats;
+
+  const entries = currentGroupByTab[activeTab]?.entries || [];
+  const selectedEntry = entries.find(e => String(e?.id || '') === selectedId);
+  return getEspnEntryStats(selectedEntry) || defaultStats;
+}
+
+function refreshPerspectiveSelect() {
+  const select = document.getElementById('perspectiveSelect');
+  if (!(select instanceof HTMLSelectElement)) return;
+
+  const entries = currentGroupByTab[activeTab]?.entries || [];
+  const sorted = [...entries].sort((a, b) => (a?.score?.rank || 999999) - (b?.score?.rank || 999999));
+
+  let options = `<option value="${TRACKER_PERSPECTIVE_VALUE}">Perspective: My Tracker Picks</option>`;
+  sorted.forEach(entry => {
+    const entryId = String(entry?.id || '');
+    if (!entryId) return;
+    const rank = entry?.score?.rank ? `#${entry.score.rank} ` : '';
+    const name = escapeHtml(entry?.name || entry?.member?.displayName || 'Entry');
+    options += `<option value="${entryId}">Perspective: ${rank}${name}</option>`;
+  });
+
+  select.innerHTML = options;
+
+  const desired = selectedPerspectiveByTab[activeTab] || TRACKER_PERSPECTIVE_VALUE;
+  const hasDesired = Array.from(select.options).some(o => o.value === desired);
+  select.value = hasDesired ? desired : TRACKER_PERSPECTIVE_VALUE;
+  if (!hasDesired) savePerspective(activeTab, TRACKER_PERSPECTIVE_VALUE);
+}
+
 function renderGroupCompare(groupPayload) {
   const wrap = document.getElementById('compareTableWrap');
   const meta = document.getElementById('compareMeta');
-  const stats = currentStatsByTab[activeTab];
+  const stats = getActivePerspectiveStats(currentStatsByTab[activeTab]);
   const entries = Array.isArray(groupPayload?.entries) ? groupPayload.entries : [];
 
   if (!entries.length) {
@@ -1362,10 +1446,13 @@ function renderGroupCompare(groupPayload) {
 
   let rows = '';
   if (stats) {
+    const label = selectedPerspectiveByTab[activeTab] === TRACKER_PERSPECTIVE_VALUE
+      ? 'You (this tracker)'
+      : 'Selected Perspective';
     rows += `
       <tr class="me-row">
         <td>-</td>
-        <td>You (this tracker)</td>
+        <td>${label}</td>
         <td>${stats.totalPts}</td>
         <td>${stats.ppr}</td>
         <td>${stats.maxPts}</td>
@@ -1426,6 +1513,7 @@ async function loadEspnGroupCompare() {
   try {
     const payload = await fetchJsonWithFallback(url);
     currentGroupByTab[activeTab] = payload;
+    refreshPerspectiveSelect();
     renderGroupCompare(payload);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -1678,6 +1766,7 @@ function bindEvents() {
       const tab = target.dataset.tab;
       if (!tab || !BRACKETS[tab]) return;
       activeTab = tab;
+      loadPerspective(activeTab);
       document.getElementById('espnGroupIdInput').value = LOCKED_ESPN_GROUP_ID;
       loadResults();
       initTracker();
@@ -1744,10 +1833,19 @@ function bindEvents() {
     importResultsFromFile(input.files[0]);
     input.value = '';
   });
+
+  document.getElementById('perspectiveSelect').addEventListener('change', (event) => {
+    const select = event.target;
+    if (!(select instanceof HTMLSelectElement)) return;
+
+    savePerspective(activeTab, select.value || TRACKER_PERSPECTIVE_VALUE);
+    initTracker();
+  });
 }
 
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('espnGroupIdInput').value = LOCKED_ESPN_GROUP_ID;
+  loadPerspective(activeTab);
   loadResults();
   bindEvents();
   initTracker();
