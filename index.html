@@ -1326,7 +1326,7 @@
       <button class="action-btn" id="btnExport">Export JSON</button>
       <button class="action-btn" id="btnImport">Import JSON</button>
       <button class="action-btn" id="btnReset">Reset Current Tab</button>
-      <button class="action-btn" id="btnInstall" style="display:none" aria-label="Install app">⬇ Add to Home Screen</button>
+      <button class="action-btn" id="btnInstall" aria-label="Install app">⬇ Install App</button>
       <input type="file" id="importFile" accept="application/json" style="display: none;">
     </div>
   </div>
@@ -1424,6 +1424,7 @@ const ESPN_CHALLENGE_KEYS = {
 const LOCKED_ESPN_GROUP_ID = 'ff8fedde-7a81-467c-8b5b-a735ddbba0c5';
 const LOCKED_ESPN_WOMEN_GROUP_ID = 'ff45e593-4dc8-492a-99b5-32f585c85494';
 const ESPN_GROUP_NOT_AVAILABLE = '__ESPN_GROUP_NOT_AVAILABLE__';
+const ESPN_GROUP_CACHE_KEY_PREFIX = 'espn_group_cache_v1_';
 function getGroupIdForTab(tab) {
   return tab === 'women' ? LOCKED_ESPN_WOMEN_GROUP_ID : LOCKED_ESPN_GROUP_ID;
 }
@@ -2208,6 +2209,33 @@ function getChallengeKeyForTab(tab) {
   return ESPN_CHALLENGE_KEYS[tab];
 }
 
+function getGroupCacheKey(tab) {
+  return `${ESPN_GROUP_CACHE_KEY_PREFIX}${tab}`;
+}
+
+function loadCachedGroupForTab(tab) {
+  try {
+    const raw = localStorage.getItem(getGroupCacheKey(tab));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (!Array.isArray(parsed.entries) || !parsed.entries.length) return null;
+    return parsed;
+  } catch (_) {
+    return null;
+  }
+}
+
+function saveCachedGroupForTab(tab, payload) {
+  try {
+    if (!payload || typeof payload !== 'object') return;
+    if (!Array.isArray(payload.entries) || !payload.entries.length) return;
+    localStorage.setItem(getGroupCacheKey(tab), JSON.stringify(payload));
+  } catch (_) {
+    // Ignore storage failures.
+  }
+}
+
 function updateSyncChip() {
   const chip = document.getElementById('syncChip');
   const text = document.getElementById('syncChipText');
@@ -2302,14 +2330,34 @@ function renderHeaderStats(stats) {
   document.getElementById('valAccuracy').textContent = stats.accuracy;
 }
 
-async function fetchEspnGroupCompareForTab(tab) {
+async function fetchEspnGroupCompareForTab(tab, options = {}) {
+  const { force = false } = options;
+  if (!force && currentGroupByTab[tab]?.entries?.length) {
+    return currentGroupByTab[tab];
+  }
+
+  const cached = loadCachedGroupForTab(tab);
+  if (!force && cached?.entries?.length) {
+    currentGroupByTab[tab] = cached;
+    return cached;
+  }
+
   const groupId = getGroupIdForTab(tab);
   const challengeKey = getChallengeKeyForTab(tab);
   const url = `https://gambit-api.fantasy.espn.com/apis/v1/challenges/${challengeKey}/groups/${groupId}?scoringPeriodId=-1&platform=chui&view=group`;
 
-  const payload = await fetchJsonWithFallback(url);
-  currentGroupByTab[tab] = payload;
-  return payload;
+  try {
+    const payload = await fetchJsonWithFallback(url);
+    currentGroupByTab[tab] = payload;
+    saveCachedGroupForTab(tab, payload);
+    return payload;
+  } catch (err) {
+    if (cached?.entries?.length) {
+      currentGroupByTab[tab] = cached;
+      return cached;
+    }
+    throw err;
+  }
 }
 
 function refreshActivePerspectiveView() {
@@ -2755,12 +2803,6 @@ async function runLiveSync(options = {}) {
     const total = men.updated + women.updated;
     const errors = men.fetchErrors + women.fetchErrors;
 
-    // Women's group is loaded once on tab activation, not on every sync cycle
-    const groupRefreshResults = await Promise.allSettled([
-      fetchEspnGroupCompareForTab('men')
-    ]);
-    const groupRefreshErrors = groupRefreshResults.filter(result => result.status === 'rejected' && (!(result.reason instanceof Error) || result.reason.message !== ESPN_GROUP_NOT_AVAILABLE)).length;
-
     loadResults();
     initTracker();
     refreshActivePerspectiveView();
@@ -2768,14 +2810,13 @@ async function runLiveSync(options = {}) {
     const syncSummary = total > 0
       ? `Updated ${total} game${total === 1 ? '' : 's'} just now`
       : `Checked live scores just now${errors ? ` with ${errors} fetch issue${errors === 1 ? '' : 's'}` : ''}`;
-    const syncNote = groupRefreshErrors ? `${syncSummary}; ${groupRefreshErrors} group refresh issue${groupRefreshErrors === 1 ? '' : 's'}` : syncSummary;
-    setSyncStatus((errors > 0 || groupRefreshErrors > 0) && total === 0 ? 'error' : 'success', syncNote);
+    setSyncStatus(errors > 0 && total === 0 ? 'error' : 'success', syncSummary);
 
     if (showAlerts) {
       if (total > 0) {
-        alert(`Live sync complete. Updated ${men.updated} Men and ${women.updated} Women games.${errors ? ` (${errors} date fetches failed)` : ''}${groupRefreshErrors ? ` (${groupRefreshErrors} group refreshes failed)` : ''}`);
+        alert(`Live sync complete. Updated ${men.updated} Men and ${women.updated} Women games.${errors ? ` (${errors} date fetches failed)` : ''}`);
       } else {
-        alert(`Live sync complete. No new finalized games matched your bracket yet.${errors ? ` (${errors} date fetches failed)` : ''}${groupRefreshErrors ? ` (${groupRefreshErrors} group refreshes failed)` : ''}`);
+        alert(`Live sync complete. No new finalized games matched your bracket yet.${errors ? ` (${errors} date fetches failed)` : ''}`);
       }
     }
   } catch (err) {
@@ -2968,9 +3009,14 @@ function initPWA() {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
+  const btn = document.getElementById('btnInstall');
+  if (btn) {
+    btn.style.display = '';
+    btn.textContent = '⬇ Install App';
+  }
+
   // Show install button on iOS (if not already installed)
   if (_isIOS && !_isInStandalone) {
-    const btn = document.getElementById('btnInstall');
     if (btn) {
       btn.style.display = '';
       btn.textContent = '⬇ Add to Home Screen';
