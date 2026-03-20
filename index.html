@@ -949,7 +949,11 @@ const ESPN_CHALLENGE_KEYS = {
   women: 'tournament-challenge-bracket-women-2026'
 };
 const LOCKED_ESPN_GROUP_ID = 'ff8fedde-7a81-467c-8b5b-a735ddbba0c5';
+const LOCKED_ESPN_WOMEN_GROUP_ID = 'ff45e593-4dc8-492a-99b5-32f585c85494';
 const ESPN_GROUP_NOT_AVAILABLE = '__ESPN_GROUP_NOT_AVAILABLE__';
+function getGroupIdForTab(tab) {
+  return tab === 'women' ? LOCKED_ESPN_WOMEN_GROUP_ID : LOCKED_ESPN_GROUP_ID;
+}
 const TRACKER_PERSPECTIVE_VALUE = '__tracker__';
 const AUTO_POLL_INTERVAL_MS = 120000;
 const AUTO_POLL_DAYS_BACK = 1;
@@ -1832,7 +1836,7 @@ function renderHeaderStats(stats) {
 }
 
 async function fetchEspnGroupCompareForTab(tab) {
-  const groupId = LOCKED_ESPN_GROUP_ID;
+  const groupId = getGroupIdForTab(tab);
   const challengeKey = getChallengeKeyForTab(tab);
   const url = `https://gambit-api.fantasy.espn.com/apis/v1/challenges/${challengeKey}/groups/${groupId}?scoringPeriodId=-1&platform=chui&view=group`;
 
@@ -1953,7 +1957,7 @@ function renderGroupCompare(groupPayload) {
 async function loadEspnGroupCompare() {
   const input = document.getElementById('espnGroupIdInput');
   const meta = document.getElementById('compareMeta');
-  const groupId = LOCKED_ESPN_GROUP_ID;
+  const groupId = getGroupIdForTab(activeTab);
   input.value = groupId;
 
   meta.textContent = 'Loading group standings...';
@@ -2139,9 +2143,9 @@ async function runLiveSync(options = {}) {
     const total = men.updated + women.updated;
     const errors = men.fetchErrors + women.fetchErrors;
 
+    // Women's group is loaded once on tab activation, not on every sync cycle
     const groupRefreshResults = await Promise.allSettled([
-      fetchEspnGroupCompareForTab('men'),
-      fetchEspnGroupCompareForTab('women')
+      fetchEspnGroupCompareForTab('men')
     ]);
     const groupRefreshErrors = groupRefreshResults.filter(result => result.status === 'rejected' && (!(result.reason instanceof Error) || result.reason.message !== ESPN_GROUP_NOT_AVAILABLE)).length;
 
@@ -2234,7 +2238,7 @@ function bindEvents() {
       if (!tab || !BRACKETS[tab]) return;
       activeTab = tab;
       loadPerspective(activeTab);
-      document.getElementById('espnGroupIdInput').value = LOCKED_ESPN_GROUP_ID;
+      document.getElementById('espnGroupIdInput').value = getGroupIdForTab(activeTab);
       loadResults();
       initTracker();
       loadEspnGroupCompare();
@@ -2311,7 +2315,7 @@ function bindEvents() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('espnGroupIdInput').value = LOCKED_ESPN_GROUP_ID;
+  document.getElementById('espnGroupIdInput').value = getGroupIdForTab(activeTab);
   loadPerspective(activeTab);
   updateSyncChip();
   loadResults();
