@@ -554,7 +554,10 @@ const STORAGE_KEY_PREFIX = 'ncaa-bracket-results-v2-';
 const STORAGE_LIVE_PREFIX = 'ncaa-bracket-live-v1-';
 const NCAA_GRAPHQL_BASE = 'https://sdataprod.ncaa.com';
 const NCAA_GET_CONTESTS_EXT = '{"persistedQuery":{"version":1,"sha256Hash":"6b26e5cda954c1302873c52835bfd223e169e2068b12511e92b3ef29fac779c2"}}';
-const CORS_PROXY_PREFIX = 'https://api.allorigins.win/raw?url=';
+const CORS_PROXY_PREFIXES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?'
+];
 
 const LIVE_CONFIG = {
   men: { sportCode: 'MBB', seasonYear: 2025, startDate: '03/18/2026', endDate: '04/08/2026' },
@@ -567,6 +570,8 @@ const ESPN_CHALLENGE_KEYS = {
 };
 const LOCKED_ESPN_GROUP_ID = 'ff8fedde-7a81-467c-8b5b-a735ddbba0c5';
 const AUTO_POLL_INTERVAL_MS = 120000;
+const AUTO_POLL_DAYS_BACK = 1;
+const AUTO_POLL_DAYS_FORWARD = 1;
 
 const MEN_REGIONS = [
   {
@@ -1268,19 +1273,54 @@ function buildContestsUrl(cfg, contestDate) {
 }
 
 async function fetchJsonWithFallback(url) {
+  const errors = [];
+
   try {
     const direct = await fetch(url);
     if (direct.ok) return direct.json();
-  } catch (_) {
-    // Fall through to proxy attempt.
+    errors.push(`direct:${direct.status}`);
+  } catch (err) {
+    errors.push(`direct:${err instanceof Error ? err.message : String(err)}`);
   }
 
-  const proxyUrl = `${CORS_PROXY_PREFIX}${encodeURIComponent(url)}`;
-  const viaProxy = await fetch(proxyUrl);
-  if (!viaProxy.ok) {
-    throw new Error(`Live fetch failed (${viaProxy.status})`);
+  for (const prefix of CORS_PROXY_PREFIXES) {
+    try {
+      const proxyUrl = `${prefix}${encodeURIComponent(url)}`;
+      const viaProxy = await fetch(proxyUrl);
+      if (!viaProxy.ok) {
+        errors.push(`proxy:${viaProxy.status}`);
+        continue;
+      }
+
+      const text = await viaProxy.text();
+      return JSON.parse(text);
+    } catch (err) {
+      errors.push(`proxy:${err instanceof Error ? err.message : String(err)}`);
+    }
   }
-  return viaProxy.json();
+
+  throw new Error(`Live fetch failed (${errors.join('; ')})`);
+}
+
+function enumerateRollingDates(startDate, endDate, daysBack, daysForward) {
+  const now = new Date();
+  const from = new Date(now);
+  from.setDate(from.getDate() - daysBack);
+  const to = new Date(now);
+  to.setDate(to.getDate() + daysForward);
+
+  const minDate = parseDateUS(startDate);
+  const maxDate = parseDateUS(endDate);
+  const start = from < minDate ? minDate : from;
+  const end = to > maxDate ? maxDate : to;
+
+  if (start > end) return [];
+
+  const days = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    days.push(formatDateUS(d));
+  }
+  return days;
 }
 
 function getGroupIdStorageKey(tab) {
@@ -1451,18 +1491,26 @@ function getLiveStatusText(contest, game) {
   return `LIVE ${left}-${right}${period}${clock}`;
 }
 
-async function updateTabFromLiveFeed(tab) {
+async function updateTabFromLiveFeed(tab, options = {}) {
   const cfg = LIVE_CONFIG[tab];
   if (!cfg) return { updated: 0, scanned: 0 };
 
   const contests = [];
-  const dates = enumerateDates(cfg.startDate, cfg.endDate);
+  const { mode = 'full' } = options;
+  const dates = mode === 'auto'
+    ? enumerateRollingDates(cfg.startDate, cfg.endDate, AUTO_POLL_DAYS_BACK, AUTO_POLL_DAYS_FORWARD)
+    : enumerateDates(cfg.startDate, cfg.endDate);
+  let fetchErrors = 0;
 
   for (const date of dates) {
-    const url = buildContestsUrl(cfg, date);
-    const payload = await fetchJsonWithFallback(url);
-    const dayContests = payload?.data?.contests || [];
-    contests.push(...dayContests);
+    try {
+      const url = buildContestsUrl(cfg, date);
+      const payload = await fetchJsonWithFallback(url);
+      const dayContests = payload?.data?.contests || [];
+      contests.push(...dayContests);
+    } catch (_) {
+      fetchErrors++;
+    }
   }
 
   const finalContests = contests.filter(c => {
@@ -1529,11 +1577,11 @@ async function updateTabFromLiveFeed(tab) {
 
   localStorage.setItem(getStorageKeyForTab(tab), JSON.stringify(merged));
   saveLiveStates(tab, liveMap);
-  return { updated, scanned: finalContests.length };
+  return { updated, scanned: finalContests.length, fetchErrors, checkedDates: dates.length };
 }
 
 async function runLiveSync(options = {}) {
-  const { showAlerts = false, showButtonBusy = false } = options;
+  const { showAlerts = false, showButtonBusy = false, mode = 'full' } = options;
   if (liveSyncInFlight) return;
   liveSyncInFlight = true;
 
@@ -1545,18 +1593,19 @@ async function runLiveSync(options = {}) {
   }
 
   try {
-    const men = await updateTabFromLiveFeed('men');
-    const women = await updateTabFromLiveFeed('women');
+    const men = await updateTabFromLiveFeed('men', { mode });
+    const women = await updateTabFromLiveFeed('women', { mode });
 
     loadResults();
     initTracker();
 
     if (showAlerts) {
       const total = men.updated + women.updated;
+      const errors = men.fetchErrors + women.fetchErrors;
       if (total > 0) {
-        alert(`Live sync complete. Updated ${men.updated} Men and ${women.updated} Women games.`);
+        alert(`Live sync complete. Updated ${men.updated} Men and ${women.updated} Women games.${errors ? ` (${errors} date fetches failed)` : ''}`);
       } else {
-        alert('Live sync complete. No new finalized games matched your bracket yet.');
+        alert(`Live sync complete. No new finalized games matched your bracket yet.${errors ? ` (${errors} date fetches failed)` : ''}`);
       }
     }
   } catch (err) {
@@ -1574,7 +1623,7 @@ async function runLiveSync(options = {}) {
 }
 
 async function updateResultsFromLive() {
-  return runLiveSync({ showAlerts: true, showButtonBusy: true });
+  return runLiveSync({ showAlerts: true, showButtonBusy: true, mode: 'full' });
 }
 
 function startAutoPolling() {
@@ -1582,11 +1631,11 @@ function startAutoPolling() {
     clearInterval(autoPollTimer);
   }
 
-  runLiveSync({ showAlerts: false, showButtonBusy: false });
+  runLiveSync({ showAlerts: false, showButtonBusy: false, mode: 'auto' });
 
   autoPollTimer = setInterval(() => {
     if (document.visibilityState !== 'visible') return;
-    runLiveSync({ showAlerts: false, showButtonBusy: false });
+    runLiveSync({ showAlerts: false, showButtonBusy: false, mode: 'auto' });
   }, AUTO_POLL_INTERVAL_MS);
 }
 
