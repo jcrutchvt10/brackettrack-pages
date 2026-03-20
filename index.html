@@ -8,6 +8,7 @@
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;600&display=swap');
 
   :root {
+    color-scheme: light;
     --bg-1: #f5f7ff;
     --bg-2: #eef7f2;
     --bg-3: #fff6ea;
@@ -141,6 +142,63 @@
     z-index: 1;
   }
 
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .sync-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.84);
+    border: 1px solid rgba(70, 92, 118, 0.14);
+    color: var(--ink-700);
+    box-shadow: 0 6px 18px rgba(49, 67, 90, 0.08);
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .sync-chip::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #7f8b99;
+    box-shadow: 0 0 0 4px rgba(127, 139, 153, 0.15);
+    flex: 0 0 auto;
+  }
+
+  .sync-chip.state-live::before {
+    background: #2e7d32;
+    box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.16);
+  }
+
+  .sync-chip.state-syncing::before {
+    background: #ef6c00;
+    box-shadow: 0 0 0 4px rgba(239, 108, 0, 0.18);
+  }
+
+  .sync-chip.state-error::before {
+    background: #c62828;
+    box-shadow: 0 0 0 4px rgba(198, 40, 40, 0.16);
+  }
+
+  .sync-chip-label {
+    color: var(--ink-500);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.68rem;
+  }
+
   .toolbar {
     display: flex;
     gap: 10px;
@@ -256,6 +314,94 @@
   .compare-table-wrap {
     overflow-x: auto;
   }
+
+  .compare-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .compare-entry-card {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(240, 245, 255, 0.88));
+    border: 1px solid rgba(70, 92, 118, 0.14);
+    box-shadow: 0 10px 22px rgba(49, 67, 90, 0.08);
+  }
+
+  .compare-entry-card.is-me {
+    background: linear-gradient(180deg, rgba(215, 227, 255, 0.94), rgba(236, 243, 255, 0.96));
+    border-color: rgba(11, 87, 208, 0.18);
+  }
+
+  .compare-entry-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .compare-rank-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(11, 87, 208, 0.1);
+    color: var(--primary);
+    font-size: 0.74rem;
+    font-weight: 800;
+  }
+
+  .compare-entry-name {
+    font-weight: 700;
+    color: var(--ink-900);
+    text-decoration: none;
+  }
+
+  .compare-entry-name:hover {
+    text-decoration: underline;
+  }
+
+  .compare-entry-subtitle {
+    font-size: 0.74rem;
+    color: var(--ink-500);
+    margin-top: 2px;
+  }
+
+  .compare-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .compare-metric {
+    padding: 10px 12px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(70, 92, 118, 0.1);
+  }
+
+  .compare-metric-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-500);
+    font-weight: 700;
+  }
+
+  .compare-metric-value {
+    margin-top: 2px;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--ink-900);
+  }
+
+  .compare-diff-positive { color: #2e7d32; }
+  .compare-diff-negative { color: #c62828; }
 
   .compare-table {
     width: 100%;
@@ -606,6 +752,103 @@
     .compare-card,
     .region-card,
     .finals-card { border-radius: 22px; }
+    .hero-meta { width: 100%; }
+    .sync-chip { width: 100%; justify-content: flex-start; }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg-1: #0d1420;
+      --bg-2: #101c18;
+      --bg-3: #1a1621;
+      --ink-900: #eef3fb;
+      --ink-700: #c1cad8;
+      --ink-500: #93a0b3;
+      --primary: #adc6ff;
+      --primary-soft: rgba(84, 120, 204, 0.3);
+      --secondary-soft: rgba(92, 140, 105, 0.24);
+      --tertiary-soft: rgba(167, 111, 58, 0.24);
+      --surface-1: rgba(20, 28, 43, 0.82);
+      --surface-2: rgba(18, 26, 39, 0.9);
+      --surface-3: rgba(24, 34, 51, 0.96);
+      --card-bg: var(--surface-2);
+      --card-border: rgba(189, 201, 219, 0.12);
+      --outline-strong: rgba(189, 201, 219, 0.2);
+      --shadow-1: 0 12px 28px rgba(0, 0, 0, 0.28);
+      --shadow-2: 0 24px 48px rgba(0, 0, 0, 0.34);
+      --correct-bg: rgba(31, 77, 53, 0.88);
+      --correct-text: #b8f3cd;
+      --wrong-bg: rgba(90, 32, 32, 0.88);
+      --wrong-text: #ffcdcd;
+      --pending-bg: rgba(45, 58, 76, 0.9);
+      --pending-text: #d0daea;
+      --dead-bg: rgba(46, 52, 62, 0.92);
+      --dead-text: #9aa6b6;
+    }
+
+    .topbar,
+    .compare-card,
+    .stat-card,
+    .region-card,
+    .finals-card,
+    .compare-entry-card,
+    .match-node,
+    .result-btn,
+    .clear-btn,
+    .compare-input,
+    .compare-select,
+    .sync-chip,
+    .compare-metric {
+      box-shadow: var(--shadow-1);
+    }
+
+    .topbar {
+      background:
+        linear-gradient(135deg, rgba(20, 30, 45, 0.94), rgba(18, 28, 40, 0.9)),
+        linear-gradient(135deg, var(--primary-soft), transparent 55%);
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .toolbar .action-btn:first-child {
+      color: #08111f;
+      background: linear-gradient(135deg, #adc6ff, #d7e3ff);
+    }
+
+    .action-btn,
+    .compare-input,
+    .compare-select,
+    .sync-chip,
+    .result-btn,
+    .clear-btn,
+    .compare-metric,
+    .match-node {
+      background: rgba(22, 31, 47, 0.94);
+      color: var(--ink-900);
+    }
+
+    .tabs {
+      background: rgba(20, 28, 43, 0.82);
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(173, 198, 255, 0.22), rgba(215, 227, 255, 0.16));
+      color: #dce7ff;
+    }
+
+    .round-badge {
+      background: rgba(173, 198, 255, 0.14);
+      color: #d3e1ff;
+    }
+
+    .compare-entry-card {
+      background: linear-gradient(180deg, rgba(22, 31, 47, 0.98), rgba(25, 36, 54, 0.94));
+    }
+
+    .compare-entry-card.is-me {
+      background: linear-gradient(180deg, rgba(32, 46, 74, 0.96), rgba(26, 39, 61, 0.98));
+    }
   }
 </style>
 </head>
@@ -615,6 +858,12 @@
     <div>
       <div class="header-title">2026 NCAA Bracket Tracker</div>
       <div class="subtitle">Use Men/Women tabs, click winners to mark game outcomes, and import or export your progress as JSON anytime.</div>
+      <div class="hero-meta">
+        <div class="sync-chip" id="syncChip">
+          <span class="sync-chip-label">Live Sync</span>
+          <span id="syncChipText">Waiting for first refresh</span>
+        </div>
+      </div>
     </div>
     <div class="toolbar">
       <button class="action-btn" id="btnUpdateResults">Update Results</button>
@@ -929,6 +1178,10 @@ let currentGroupByTab = { men: null, women: null };
 let selectedPerspectiveByTab = { men: TRACKER_PERSPECTIVE_VALUE, women: TRACKER_PERSPECTIVE_VALUE };
 let autoPollTimer = null;
 let liveSyncInFlight = false;
+let syncStatus = {
+  state: 'idle',
+  text: 'Waiting for first refresh'
+};
 
 function stripSeed(name) {
   return (name || '').replace(/\s*\(\d+\)/g, '').trim();
@@ -1483,6 +1736,23 @@ function getChallengeKeyForTab(tab) {
   return ESPN_CHALLENGE_KEYS[tab];
 }
 
+function updateSyncChip() {
+  const chip = document.getElementById('syncChip');
+  const text = document.getElementById('syncChipText');
+  if (!(chip instanceof HTMLElement) || !(text instanceof HTMLElement)) return;
+
+  chip.classList.remove('state-live', 'state-syncing', 'state-error');
+  if (syncStatus.state === 'success') chip.classList.add('state-live');
+  if (syncStatus.state === 'syncing') chip.classList.add('state-syncing');
+  if (syncStatus.state === 'error') chip.classList.add('state-error');
+  text.textContent = syncStatus.text;
+}
+
+function setSyncStatus(state, text) {
+  syncStatus = { state, text };
+  updateSyncChip();
+}
+
 function formatDiff(value) {
   if (value > 0) return `+${value}`;
   return `${value}`;
@@ -1563,20 +1833,39 @@ function renderGroupCompare(groupPayload) {
   const sorted = [...entries].sort((a, b) => (a?.score?.rank || 999999) - (b?.score?.rank || 999999));
   const top = sorted.slice(0, 25);
 
-  let rows = '';
+  let cards = '';
   if (stats) {
     const label = selectedPerspectiveByTab[activeTab] === TRACKER_PERSPECTIVE_VALUE
       ? 'You (this tracker)'
       : 'Selected Perspective';
-    rows += `
-      <tr class="me-row">
-        <td>-</td>
-        <td>${label}</td>
-        <td>${stats.totalPts}</td>
-        <td>${stats.ppr}</td>
-        <td>${stats.maxPts}</td>
-        <td>0</td>
-      </tr>`;
+    cards += `
+      <article class="compare-entry-card is-me">
+        <div class="compare-entry-top">
+          <div>
+            <div class="compare-entry-name">${label}</div>
+            <div class="compare-entry-subtitle">Current app perspective</div>
+          </div>
+          <div class="compare-rank-pill">You</div>
+        </div>
+        <div class="compare-metric-grid">
+          <div class="compare-metric">
+            <div class="compare-metric-label">Points</div>
+            <div class="compare-metric-value">${stats.totalPts}</div>
+          </div>
+          <div class="compare-metric">
+            <div class="compare-metric-label">PPR</div>
+            <div class="compare-metric-value">${stats.ppr}</div>
+          </div>
+          <div class="compare-metric">
+            <div class="compare-metric-label">Max</div>
+            <div class="compare-metric-value">${stats.maxPts}</div>
+          </div>
+          <div class="compare-metric">
+            <div class="compare-metric-label">Accuracy</div>
+            <div class="compare-metric-value">${stats.accuracy}</div>
+          </div>
+        </div>
+      </article>`;
   }
 
   top.forEach(entry => {
@@ -1589,32 +1878,39 @@ function renderGroupCompare(groupPayload) {
     const entryId = entry?.id || '';
     const challengeKey = getChallengeKeyForTab(activeTab);
     const entryUrl = `https://fantasy.espn.com/games/${challengeKey}/entry?entryID=${encodeURIComponent(entryId)}`;
+    const diffClass = diff > 0 ? 'compare-diff-positive' : diff < 0 ? 'compare-diff-negative' : '';
 
-    rows += `
-      <tr>
-        <td>${rank}</td>
-        <td><a href="${entryUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(name)}</a></td>
-        <td>${points}</td>
-        <td>${ppr}</td>
-        <td>${max}</td>
-        <td>${stats ? formatDiff(diff) : '-'}</td>
-      </tr>`;
+    cards += `
+      <article class="compare-entry-card">
+        <div class="compare-entry-top">
+          <div>
+            <a class="compare-entry-name" href="${entryUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(name)}</a>
+            <div class="compare-entry-subtitle">ESPN Tournament Challenge entry</div>
+          </div>
+          <div class="compare-rank-pill">#${rank}</div>
+        </div>
+        <div class="compare-metric-grid">
+          <div class="compare-metric">
+            <div class="compare-metric-label">Points</div>
+            <div class="compare-metric-value">${points}</div>
+          </div>
+          <div class="compare-metric">
+            <div class="compare-metric-label">PPR</div>
+            <div class="compare-metric-value">${ppr}</div>
+          </div>
+          <div class="compare-metric">
+            <div class="compare-metric-label">Max</div>
+            <div class="compare-metric-value">${max}</div>
+          </div>
+          <div class="compare-metric">
+            <div class="compare-metric-label">Vs You</div>
+            <div class="compare-metric-value ${diffClass}">${stats ? formatDiff(diff) : '-'}</div>
+          </div>
+        </div>
+      </article>`;
   });
 
-  wrap.innerHTML = `
-    <table class="compare-table">
-      <thead>
-        <tr>
-          <th>Rank</th>
-          <th>Entry</th>
-          <th>Pts</th>
-          <th>PPR</th>
-          <th>Max</th>
-          <th>Vs You</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+  wrap.innerHTML = `<div class="compare-card-grid">${cards}</div>`;
 
   meta.textContent = `Group ${groupPayload.groupId} loaded. Showing top ${top.length} entries${stats ? ' plus your tracker row' : ''}.`;
 }
@@ -1791,6 +2087,7 @@ async function runLiveSync(options = {}) {
   const { showAlerts = false, showButtonBusy = false, mode = 'full' } = options;
   if (liveSyncInFlight) return;
   liveSyncInFlight = true;
+  setSyncStatus('syncing', `Refreshing live results for ${mode === 'auto' ? 'today' : 'full bracket'}...`);
 
   const btn = document.getElementById('btnUpdateResults');
   const originalLabel = btn?.textContent || '';
@@ -1802,13 +2099,18 @@ async function runLiveSync(options = {}) {
   try {
     const men = await updateTabFromLiveFeed('men', { mode });
     const women = await updateTabFromLiveFeed('women', { mode });
+    const total = men.updated + women.updated;
+    const errors = men.fetchErrors + women.fetchErrors;
 
     loadResults();
     initTracker();
 
+    const syncSummary = total > 0
+      ? `Updated ${total} game${total === 1 ? '' : 's'} just now`
+      : `Checked live scores just now${errors ? ` with ${errors} fetch issue${errors === 1 ? '' : 's'}` : ''}`;
+    setSyncStatus(errors > 0 && total === 0 ? 'error' : 'success', syncSummary);
+
     if (showAlerts) {
-      const total = men.updated + women.updated;
-      const errors = men.fetchErrors + women.fetchErrors;
       if (total > 0) {
         alert(`Live sync complete. Updated ${men.updated} Men and ${women.updated} Women games.${errors ? ` (${errors} date fetches failed)` : ''}`);
       } else {
@@ -1816,8 +2118,9 @@ async function runLiveSync(options = {}) {
       }
     }
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    setSyncStatus('error', `Live sync error: ${msg}`);
     if (showAlerts) {
-      const msg = err instanceof Error ? err.message : String(err);
       alert(`Live sync failed: ${msg}`);
     }
   } finally {
@@ -1965,6 +2268,7 @@ function bindEvents() {
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('espnGroupIdInput').value = LOCKED_ESPN_GROUP_ID;
   loadPerspective(activeTab);
+  updateSyncChip();
   loadResults();
   bindEvents();
   initTracker();
