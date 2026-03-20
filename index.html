@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 NCAA Bracket Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;600&display=swap');
+
+  :root {
+    --bg-1: #fef6ec;
+    --bg-2: #e8f7ff;
+    --ink-900: #162032;
+    --ink-700: #2a3b52;
+    --ink-500: #56667a;
+    --card-bg: rgba(255, 255, 255, 0.9);
+    --card-border: rgba(22, 32, 50, 0.12);
+    --correct-bg: #d8fbe6;
+    --correct-text: #0f5a38;
+    --wrong-bg: #ffe1e1;
+    --wrong-text: #8e1e1e;
+    --pending-bg: #ebf0f5;
+    --pending-text: #2b445f;
+    --dead-bg: #f4f4f4;
+    --dead-text: #7d8b9b;
+    --accent: #0f77e3;
+    --accent-soft: #d8eafe;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans', "Segoe UI", Tahoma, sans-serif;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(15, 119, 227, 0.18), transparent 36%),
+      radial-gradient(circle at 88% 8%, rgba(255, 112, 66, 0.2), transparent 34%),
+      linear-gradient(135deg, var(--bg-1), var(--bg-2));
+    color: var(--ink-900);
+    padding: 28px 18px 40px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 1380px;
+    margin: 0 auto;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .header-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(1.5rem, 3.8vw, 2.2rem);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--ink-900);
+  }
+
+  .subtitle {
+    color: var(--ink-700);
+    font-size: 0.95rem;
+    max-width: 860px;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    color: var(--ink-900);
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  }
+
+  .action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  .tabs {
+    display: inline-flex;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 16px;
+    gap: 4px;
+  }
+
+  .tab-btn {
+    border: 0;
+    border-radius: 9px;
+    padding: 8px 14px;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--ink-700);
+    background: transparent;
+  }
+
+  .tab-btn.active {
+    background: white;
+    color: var(--accent);
+    box-shadow: 0 3px 12px rgba(15, 119, 227, 0.2);
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .compare-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 14px;
+    box-shadow: 0 8px 24px rgba(8, 31, 58, 0.08);
+  }
+
+  .compare-controls {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .compare-input {
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 0.88rem;
+    color: var(--ink-900);
+    background: #fff;
+  }
+
+  .compare-meta {
+    font-size: 0.78rem;
+    color: var(--ink-500);
+    margin-bottom: 8px;
+  }
+
+  .compare-table-wrap {
+    overflow-x: auto;
+  }
+
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  .compare-table th,
+  .compare-table td {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid var(--card-border);
+    white-space: nowrap;
+  }
+
+  .compare-table th {
+    color: var(--ink-500);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+  }
+
+  .compare-table .me-row {
+    background: rgba(15, 119, 227, 0.1);
+    font-weight: 700;
+  }
+
+  .stat-card {
+    background: var(--card-bg);
+    padding: 16px;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(8, 31, 58, 0.08);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-500);
+  }
+
+  .region-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(640px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .region-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    border: 1px solid var(--card-border);
+    box-shadow: 0 8px 26px rgba(7, 20, 40, 0.07);
+    overflow: hidden;
+    animation: fadeUp 420ms ease both;
+  }
+
+  .region-header {
+    background: linear-gradient(90deg, rgba(15, 119, 227, 0.14), rgba(255, 112, 66, 0.12));
+    padding: 10px 14px;
+    font-weight: 700;
+    border-bottom: 1px solid var(--card-border);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-size: 0.84rem;
+  }
+
+  .tree-wrap {
+    overflow-x: auto;
+    border-bottom: 1px solid var(--card-border);
+    padding: 10px;
+  }
+
+  .tree-grid {
+    min-width: 820px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .round-col {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    min-height: 320px;
+  }
+
+  .round-col.r0 { min-height: 360px; }
+  .round-col.r1 { min-height: 360px; }
+  .round-col.r2 { min-height: 360px; }
+  .round-col.r3 { min-height: 360px; }
+
+  .round-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-500);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+
+  .match-node {
+    position: relative;
+    background: #fff;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 0.76rem;
+    color: var(--ink-700);
+    min-height: 46px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .match-node .pick-flag {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .connector-h {
+    position: absolute;
+    top: 50%;
+    right: -20px;
+    width: 20px;
+    border-top: 2px solid rgba(88, 117, 145, 0.45);
+    transform: translateY(-50%);
+  }
+
+  .connector-v {
+    position: absolute;
+    right: -20px;
+    top: 25%;
+    height: 50%;
+    border-right: 2px solid rgba(88, 117, 145, 0.35);
+  }
+
+  .round-col:last-child .connector-h,
+  .round-col:last-child .connector-v {
+    display: none;
+  }
+
+  .game-list {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .game-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--card-border);
+    font-size: 0.84rem;
+  }
+
+  .game-row:last-child { border-bottom: none; }
+  .game-row.game-correct { background: rgba(216, 251, 230, 0.45); }
+  .game-row.game-wrong { background: rgba(255, 225, 225, 0.45); }
+  .game-row.game-live { background: rgba(255, 244, 183, 0.55); }
+
+  .matchup {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .round-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--ink-500);
+    background: #ecf2f8;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .matchup-title {
+    color: var(--ink-700);
+    font-weight: 600;
+  }
+
+  .meta-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pick-label {
+    color: var(--ink-500);
+    font-size: 0.76rem;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .pick-value {
+    color: var(--ink-900);
+    font-weight: 700;
+  }
+
+  .pick-pill {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.76rem;
+    text-align: center;
+    min-width: 100px;
+  }
+
+  .result-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .result-btn,
+  .clear-btn {
+    border: 1px solid var(--card-border);
+    background: white;
+    color: var(--ink-700);
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 6px 8px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    transition: all 140ms ease;
+    min-height: 32px;
+  }
+
+  .result-btn.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: rgba(15, 119, 227, 0.42);
+  }
+
+  .result-btn:hover,
+  .clear-btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .clear-btn {
+    width: 42px;
+    padding: 6px 0;
+  }
+
+  .finals-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    border: 1px solid var(--card-border);
+    box-shadow: 0 8px 26px rgba(7, 20, 40, 0.07);
+    overflow: hidden;
+    margin-top: 14px;
+  }
+
+  .finals-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .status-correct { background: var(--correct-bg); color: var(--correct-text); }
+  .status-wrong { background: var(--wrong-bg); color: var(--wrong-text); }
+  .status-live { background: #fff2a6; color: #6f4a00; }
+  .status-pending { background: var(--pending-bg); color: var(--pending-text); }
+  .status-dead { background: var(--dead-bg); color: var(--dead-text); text-decoration: line-through; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 1000px) {
+    .region-grid { grid-template-columns: 1fr; }
+    .finals-body { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 700px) {
+    .topbar { flex-direction: column; }
+    .toolbar { width: 100%; }
+    .action-btn { flex: 1 1 auto; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="topbar">
+    <div>
+      <div class="header-title">2026 NCAA Bracket Tracker</div>
+      <div class="subtitle">Use Men/Women tabs, click winners to mark game outcomes, and import or export your progress as JSON anytime.</div>
+    </div>
+    <div class="toolbar">
+      <button class="action-btn" id="btnUpdateResults">Update Results</button>
+      <button class="action-btn" id="btnExport">Export JSON</button>
+      <button class="action-btn" id="btnImport">Import JSON</button>
+      <button class="action-btn" id="btnReset">Reset Current Tab</button>
+      <input type="file" id="importFile" accept="application/json" style="display: none;">
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="men">Men</button>
+    <button class="tab-btn" data-tab="women">Women</button>
+  </div>
+
+  <div class="summary-grid">
+    <div class="stat-card">
+      <div class="stat-value" id="valTotalPts">0</div>
+      <div class="stat-label">Current Points</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="valPPR">0</div>
+      <div class="stat-label">Points Possible Remaining</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="valMaxPts">0</div>
+      <div class="stat-label">Max Possible Points</div>
+    </div>
+    <div class="stat-card" style="flex-direction: row; justify-content: space-around;">
+      <div>
+        <div class="stat-value" style="color: var(--correct-text);" id="valWins">0</div>
+        <div class="stat-label">Correct</div>
+      </div>
+      <div>
+        <div class="stat-value" style="color: var(--wrong-text);" id="valLosses">0</div>
+        <div class="stat-label">Incorrect</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="valPlayed">0</div>
+      <div class="stat-label">Games Final</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="valAccuracy">0%</div>
+      <div class="stat-label">Pick Accuracy</div>
+    </div>
+  </div>
+
+  <div class="compare-card">
+    <div class="compare-controls">
+      <input class="compare-input" id="espnGroupIdInput" placeholder="ESPN Group ID (UUID)" readonly>
+      <button class="action-btn" id="btnLoadGroup">Load Group Compare</button>
+    </div>
+    <div class="compare-meta" id="compareMeta">Locked to your ESPN group ID for one-click compare.</div>
+    <div class="compare-table-wrap" id="compareTableWrap"></div>
+  </div>
+
+  <div class="region-grid" id="regionContainer"></div>
+  <div class="finals-card" id="finalsContainer"></div>
+</div>
+
+<script>
+const ROUND_PTS = [10, 20, 40, 80, 160, 320];
+const ROUND_NAMES = ['R64', 'R32', 'S16', 'E8', 'FF', 'NC'];
+const STORAGE_KEY_PREFIX = 'ncaa-bracket-results-v2-';
+const STORAGE_LIVE_PREFIX = 'ncaa-bracket-live-v1-';
+const NCAA_GRAPHQL_BASE = 'https://sdataprod.ncaa.com';
+const NCAA_GET_CONTESTS_EXT = '{"persistedQuery":{"version":1,"sha256Hash":"6b26e5cda954c1302873c52835bfd223e169e2068b12511e92b3ef29fac779c2"}}';
+const CORS_PROXY_PREFIX = 'https://api.allorigins.win/raw?url=';
+
+const LIVE_CONFIG = {
+  men: { sportCode: 'MBB', seasonYear: 2025, startDate: '03/18/2026', endDate: '04/08/2026' },
+  women: { sportCode: 'WBB', seasonYear: 2025, startDate: '03/18/2026', endDate: '04/08/2026' }
+};
+
+const ESPN_CHALLENGE_KEYS = {
+  men: 'tournament-challenge-bracket-2026',
+  women: 'tournament-challenge-bracket-women-2026'
+};
+const LOCKED_ESPN_GROUP_ID = 'ff8fedde-7a81-467c-8b5b-a735ddbba0c5';
+
+const MEN_REGIONS = [
+  {
+    name: 'East Region',
+    games: [
+      { id:'E1', r:0, t1:'Duke (1)', t2:'Siena (16)', pick:'Duke' },
+      { id:'E2', r:0, t1:'Ohio State (8)', t2:'TCU (9)', pick:'TCU' },
+      { id:'E3', r:0, t1:"St. John's (5)", t2:'N. Iowa (12)', pick:"St. John's" },
+      { id:'E4', r:0, t1:'Kansas (4)', t2:'Cal Baptist (13)', pick:'Kansas' },
+      { id:'E5', r:0, t1:'Louisville (6)', t2:'S. Florida (11)', pick:'Louisville' },
+      { id:'E6', r:0, t1:'Mich. State (3)', t2:'N. Dak. St. (14)', pick:'Mich. State' },
+      { id:'E7', r:0, t1:'UCLA (7)', t2:'UCF (10)', pick:'UCLA' },
+      { id:'E8', r:0, t1:'UConn (2)', t2:'Furman (15)', pick:'UConn' },
+      { id:'E9', r:1, t1:'Duke', t2:'TCU', pick:'Duke' },
+      { id:'E10', r:1, t1:"St. John's", t2:'Kansas', pick:'Kansas' },
+      { id:'E11', r:1, t1:'Louisville', t2:'Mich. State', pick:'Mich. State' },
+      { id:'E12', r:1, t1:'UCLA', t2:'UConn', pick:'UConn' },
+      { id:'E13', r:2, t1:'Duke', t2:'Kansas', pick:'Duke' },
+      { id:'E14', r:2, t1:'Mich. State', t2:'UConn', pick:'UConn' },
+      { id:'E15', r:3, t1:'Duke', t2:'UConn', pick:'Duke' }
+    ]
+  },
+  {
+    name: 'West Region',
+    games: [
+      { id:'W1', r:0, t1:'Arizona (1)', t2:'LIU (16)', pick:'Arizona' },
+      { id:'W2', r:0, t1:'Villanova (8)', t2:'Utah State (9)', pick:'Utah State' },
+      { id:'W3', r:0, t1:'Wisconsin (5)', t2:'High Point (12)', pick:'Wisconsin' },
+      { id:'W4', r:0, t1:'Arkansas (4)', t2:'Hawaii (13)', pick:'Arkansas' },
+      { id:'W5', r:0, t1:'BYU (6)', t2:'Texas (11)', pick:'Texas' },
+      { id:'W6', r:0, t1:'Gonzaga (3)', t2:'Kennesaw St. (14)', pick:'Gonzaga' },
+      { id:'W7', r:0, t1:'Miami FL (7)', t2:'Missouri (10)', pick:'Missouri' },
+      { id:'W8', r:0, t1:'Purdue (2)', t2:'Queens (15)', pick:'Purdue' },
+      { id:'W9', r:1, t1:'Arizona', t2:'Utah State', pick:'Arizona' },
+      { id:'W10', r:1, t1:'High Point/Wisc', t2:'Arkansas', pick:'Arkansas' },
+      { id:'W11', r:1, t1:'Texas', t2:'Gonzaga', pick:'Gonzaga' },
+      { id:'W12', r:1, t1:'Missouri', t2:'Purdue', pick:'Purdue' },
+      { id:'W13', r:2, t1:'Arizona', t2:'Arkansas', pick:'Arizona' },
+      { id:'W14', r:2, t1:'Gonzaga', t2:'Purdue', pick:'Purdue' },
+      { id:'W15', r:3, t1:'Arizona', t2:'Purdue', pick:'Arizona' }
+    ]
+  },
+  {
+    name: 'Midwest Region',
+    games: [
+      { id:'M1', r:0, t1:'Michigan (1)', t2:'Howard (16)', pick:'Michigan' },
+      { id:'M2', r:0, t1:'Georgia (8)', t2:'Saint Louis (9)', pick:'Saint Louis' },
+      { id:'M3', r:0, t1:'Texas Tech (5)', t2:'Akron (12)', pick:'Texas Tech' },
+      { id:'M4', r:0, t1:'Alabama (4)', t2:'Hofstra (13)', pick:'Alabama' },
+      { id:'M5', r:0, t1:'Tennessee (6)', t2:'Miami OH (11)', pick:'Miami OH' },
+      { id:'M6', r:0, t1:'Virginia (3)', t2:'Wright State (14)', pick:'Virginia' },
+      { id:'M7', r:0, t1:'Kentucky (7)', t2:'Santa Clara (10)', pick:'Kentucky' },
+      { id:'M8', r:0, t1:'Iowa State (2)', t2:'Tenn. State (15)', pick:'Iowa State' },
+      { id:'M9', r:1, t1:'Michigan', t2:'Saint Louis', pick:'Michigan' },
+      { id:'M10', r:1, t1:'Texas Tech', t2:'Alabama', pick:'Alabama' },
+      { id:'M11', r:1, t1:'Miami OH', t2:'Virginia', pick:'Virginia' },
+      { id:'M12', r:1, t1:'Kentucky', t2:'Iowa State', pick:'Iowa State' },
+      { id:'M13', r:2, t1:'Michigan', t2:'Alabama', pick:'Michigan' },
+      { id:'M14', r:2, t1:'Virginia', t2:'Iowa State', pick:'Iowa State' },
+      { id:'M15', r:3, t1:'Michigan', t2:'Iowa State', pick:'Michigan' }
+    ]
+  },
+  {
+    name: 'South Region',
+    games: [
+      { id:'S1', r:0, t1:'Florida (1)', t2:'Prairie View (16)', pick:'Florida' },
+      { id:'S2', r:0, t1:'Clemson (8)', t2:'Iowa (9)', pick:'Iowa' },
+      { id:'S3', r:0, t1:'Vanderbilt (5)', t2:'McNeese (12)', pick:'Vanderbilt' },
+      { id:'S4', r:0, t1:'Nebraska (4)', t2:'Troy (13)', pick:'Nebraska' },
+      { id:'S5', r:0, t1:'N. Carolina (6)', t2:'VCU (11)', pick:'N. Carolina' },
+      { id:'S6', r:0, t1:'Illinois (3)', t2:'Penn (14)', pick:'Illinois' },
+      { id:'S7', r:0, t1:"Saint Mary's (7)", t2:'Texas A&M (10)', pick:"Saint Mary's" },
+      { id:'S8', r:0, t1:'Houston (2)', t2:'Idaho (15)', pick:'Houston' },
+      { id:'S9', r:1, t1:'Florida', t2:'Iowa', pick:'Florida' },
+      { id:'S10', r:1, t1:'Vanderbilt', t2:'Nebraska', pick:'Nebraska' },
+      { id:'S11', r:1, t1:'N. Carolina', t2:'Illinois', pick:'Illinois' },
+      { id:'S12', r:1, t1:"Saint Mary's", t2:'Houston', pick:'Houston' },
+      { id:'S13', r:2, t1:'Florida', t2:'Nebraska', pick:'Florida' },
+      { id:'S14', r:2, t1:'Illinois', t2:'Houston', pick:'Houston' },
+      { id:'S15', r:3, t1:'Florida', t2:'Houston', pick:'Houston' }
+    ]
+  },
+  {
+    name: 'Final Four & Championship',
+    games: [
+      { id:'FF1', r:4, t1:'Duke', t2:'Arizona', pick:'Duke' },
+      { id:'FF2', r:4, t1:'Michigan', t2:'Houston', pick:'Michigan' },
+      { id:'CH',  r:5, t1:'Duke', t2:'Michigan', pick:'Duke' }
+    ]
+  }
+];
+
+const MEN_RESULTS = {
+  'E1': { winner: 'Duke', loser: 'Siena' },
+  'E2': { winner: 'TCU', loser: 'Ohio State' },
+  'E5': { winner: 'Louisville', loser: 'S. Florida' },
+  'E6': { winner: 'Mich. State', loser: 'N. Dak. St.' },
+  'W3': { winner: 'High Point', loser: 'Wisconsin' },
+  'W4': { winner: 'Arkansas', loser: 'Hawaii' },
+  'S3': { winner: 'Vanderbilt', loser: 'McNeese' },
+  'S4': { winner: 'Nebraska', loser: 'Troy' },
+  'S5': { winner: 'N. Carolina', loser: 'VCU' }
+};
+
+// As of 2026-03-19, First Four games are final but the 64-team women's bracket
+// matchups in this tracker have not posted final scores yet.
+const WOMEN_RESULTS = {};
+
+const WOMEN_REGIONS = [
+  {
+    name: 'Ft. Worth 1 Region',
+    games: [
+      { id:'WF11', r:0, t1:'UConn (1)', t2:'UTSA (16)', pick:'UConn' },
+      { id:'WF12', r:0, t1:'Iowa State (8)', t2:'Syracuse (9)', pick:'Iowa State' },
+      { id:'WF13', r:0, t1:'Maryland (5)', t2:'Murray State (12)', pick:'Maryland' },
+      { id:'WF14', r:0, t1:'N. Carolina (4)', t2:'W. Illinois (13)', pick:'N. Carolina' },
+      { id:'WF15', r:0, t1:'Notre Dame (6)', t2:'Fairfield (11)', pick:'Notre Dame' },
+      { id:'WF16', r:0, t1:'Ohio State (3)', t2:'Howard (14)', pick:'Ohio State' },
+      { id:'WF17', r:0, t1:'Illinois (7)', t2:'Colorado (10)', pick:'Illinois' },
+      { id:'WF18', r:0, t1:'Vanderbilt (2)', t2:'High Point (15)', pick:'Vanderbilt' },
+      { id:'WF19', r:1, t1:'UConn', t2:'Iowa State', pick:'UConn' },
+      { id:'WF110', r:1, t1:'Maryland', t2:'N. Carolina', pick:'N. Carolina' },
+      { id:'WF111', r:1, t1:'Notre Dame', t2:'Ohio State', pick:'Notre Dame' },
+      { id:'WF112', r:1, t1:'Illinois', t2:'Vanderbilt', pick:'Vanderbilt' },
+      { id:'WF113', r:2, t1:'UConn', t2:'N. Carolina', pick:'UConn' },
+      { id:'WF114', r:2, t1:'Notre Dame', t2:'Vanderbilt', pick:'Vanderbilt' },
+      { id:'WF115', r:3, t1:'UConn', t2:'Vanderbilt', pick:'UConn' }
+    ]
+  },
+  {
+    name: 'Sacramento 4 Region',
+    games: [
+      { id:'WS41', r:0, t1:'S. Carolina (1)', t2:'Southern (16)', pick:'S. Carolina' },
+      { id:'WS42', r:0, t1:'Clemson (8)', t2:'USC (9)', pick:'Clemson' },
+      { id:'WS43', r:0, t1:'Mich. State (5)', t2:'Colo. State (12)', pick:'Mich. State' },
+      { id:'WS44', r:0, t1:'Oklahoma (4)', t2:'Idaho (13)', pick:'Oklahoma' },
+      { id:'WS45', r:0, t1:'Washington (6)', t2:'S. Dak. St. (11)', pick:'Washington' },
+      { id:'WS46', r:0, t1:'TCU (3)', t2:'UC San Diego (14)', pick:'TCU' },
+      { id:'WS47', r:0, t1:'Georgia (7)', t2:'Virginia (10)', pick:'Georgia' },
+      { id:'WS48', r:0, t1:'Iowa (2)', t2:'Fairleigh D. (15)', pick:'Iowa' },
+      { id:'WS49', r:1, t1:'S. Carolina', t2:'Clemson', pick:'S. Carolina' },
+      { id:'WS410', r:1, t1:'Mich. State', t2:'Oklahoma', pick:'Oklahoma' },
+      { id:'WS411', r:1, t1:'Washington', t2:'TCU', pick:'TCU' },
+      { id:'WS412', r:1, t1:'Georgia', t2:'Iowa', pick:'Iowa' },
+      { id:'WS413', r:2, t1:'S. Carolina', t2:'Oklahoma', pick:'S. Carolina' },
+      { id:'WS414', r:2, t1:'TCU', t2:'Iowa', pick:'Iowa' },
+      { id:'WS415', r:3, t1:'S. Carolina', t2:'Iowa', pick:'S. Carolina' }
+    ]
+  },
+  {
+    name: 'Ft. Worth 3 Region',
+    games: [
+      { id:'WF31', r:0, t1:'Texas (1)', t2:'Mo. State (16)', pick:'Texas' },
+      { id:'WF32', r:0, t1:'Oregon (8)', t2:'Va. Tech (9)', pick:'Oregon' },
+      { id:'WF33', r:0, t1:'Kentucky (5)', t2:'James Madison (12)', pick:'Kentucky' },
+      { id:'WF34', r:0, t1:'W. Virginia (4)', t2:'Miami OH (13)', pick:'W. Virginia' },
+      { id:'WF35', r:0, t1:'Alabama (6)', t2:'Rhode Island (11)', pick:'Alabama' },
+      { id:'WF36', r:0, t1:'Louisville (3)', t2:'Vermont (14)', pick:'Louisville' },
+      { id:'WF37', r:0, t1:'NC State (7)', t2:'Tennessee (10)', pick:'Tennessee' },
+      { id:'WF38', r:0, t1:'Michigan (2)', t2:'Holy Cross (15)', pick:'Michigan' },
+      { id:'WF39', r:1, t1:'Texas', t2:'Oregon', pick:'Texas' },
+      { id:'WF310', r:1, t1:'Kentucky', t2:'W. Virginia', pick:'Kentucky' },
+      { id:'WF311', r:1, t1:'Alabama', t2:'Louisville', pick:'Louisville' },
+      { id:'WF312', r:1, t1:'Tennessee', t2:'Michigan', pick:'Michigan' },
+      { id:'WF313', r:2, t1:'Texas', t2:'Kentucky', pick:'Texas' },
+      { id:'WF314', r:2, t1:'Louisville', t2:'Michigan', pick:'Michigan' },
+      { id:'WF315', r:3, t1:'Texas', t2:'Michigan', pick:'Texas' }
+    ]
+  },
+  {
+    name: 'Sacramento 2 Region',
+    games: [
+      { id:'WS21', r:0, t1:'UCLA (1)', t2:'Cal Baptist (16)', pick:'UCLA' },
+      { id:'WS22', r:0, t1:'Okla. State (8)', t2:'Princeton (9)', pick:'Okla. State' },
+      { id:'WS23', r:0, t1:'Ole Miss (5)', t2:'Gonzaga (12)', pick:'Ole Miss' },
+      { id:'WS24', r:0, t1:'Minnesota (4)', t2:'Green Bay (13)', pick:'Minnesota' },
+      { id:'WS25', r:0, t1:'Baylor (6)', t2:'Nebraska (11)', pick:'Baylor' },
+      { id:'WS26', r:0, t1:'Duke (3)', t2:'Charleston (14)', pick:'Duke' },
+      { id:'WS27', r:0, t1:'Texas Tech (7)', t2:'Villanova (10)', pick:'Texas Tech' },
+      { id:'WS28', r:0, t1:'LSU (2)', t2:'Jacksonville (15)', pick:'LSU' },
+      { id:'WS29', r:1, t1:'UCLA', t2:'Okla. State', pick:'UCLA' },
+      { id:'WS210', r:1, t1:'Ole Miss', t2:'Minnesota', pick:'Minnesota' },
+      { id:'WS211', r:1, t1:'Baylor', t2:'Duke', pick:'Duke' },
+      { id:'WS212', r:1, t1:'Texas Tech', t2:'LSU', pick:'LSU' },
+      { id:'WS213', r:2, t1:'UCLA', t2:'Minnesota', pick:'UCLA' },
+      { id:'WS214', r:2, t1:'Duke', t2:'LSU', pick:'LSU' },
+      { id:'WS215', r:3, t1:'UCLA', t2:'LSU', pick:'UCLA' }
+    ]
+  },
+  {
+    name: "Women's Final Four & Championship",
+    games: [
+      { id:'WFF1', r:4, t1:'UConn', t2:'S. Carolina', pick:'UConn' },
+      { id:'WFF2', r:4, t1:'Texas', t2:'UCLA', pick:'UCLA' },
+      { id:'WCH',  r:5, t1:'UConn', t2:'UCLA', pick:'UConn' }
+    ]
+  }
+];
+
+const BRACKETS = {
+  men: {
+    label: 'Men',
+    regions: MEN_REGIONS,
+    baselineResults: MEN_RESULTS
+  },
+  women: {
+    label: 'Women',
+    regions: WOMEN_REGIONS,
+    baselineResults: WOMEN_RESULTS
+  }
+};
+
+const OFFICIAL_RESULTS_BY_TAB = {
+  men: MEN_RESULTS,
+  women: WOMEN_RESULTS
+};
+
+let activeTab = 'men';
+let actualResults = {};
+let liveStates = { men: {}, women: {} };
+let currentStatsByTab = { men: null, women: null };
+let currentGroupByTab = { men: null, women: null };
+
+function stripSeed(name) {
+  return (name || '').replace(/\s*\(\d+\)/g, '').trim();
+}
+
+function normalize(name) {
+  const base = stripSeed(name)
+    .toLowerCase()
+    .replace(/[.'’]/g, '')
+    .replace(/&/g, 'and')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const aliases = {
+    'n carolina': 'north carolina',
+    's carolina': 'south carolina',
+    'nc state': 'north carolina state',
+    'okla state': 'oklahoma state',
+    'mich state': 'michigan state',
+    'iowa st': 'iowa state',
+    'ohio st': 'ohio state',
+    'va tech': 'virginia tech',
+    'w virginia': 'west virginia',
+    'mo state': 'missouri state',
+    'colo state': 'colorado state',
+    's dak st': 'south dakota state',
+    'st johns': 'saint johns',
+    'uc san diego': 'california san diego',
+    'fdu': 'fairleigh d',
+    'fairleigh d': 'fairleigh dickinson',
+    'uconn': 'connecticut'
+  };
+
+  return aliases[base] || base;
+}
+
+function teamMatches(a, b) {
+  const aNorm = normalize(a);
+  const bNorm = normalize(b);
+  if (!aNorm || !bNorm) return false;
+  if (aNorm === bNorm) return true;
+
+  const alts = aNorm.split('/').map(x => x.trim()).filter(Boolean);
+  return alts.includes(bNorm);
+}
+
+function getStorageKey() {
+  return `${STORAGE_KEY_PREFIX}${activeTab}`;
+}
+
+function getLiveStorageKeyForTab(tab) {
+  return `${STORAGE_LIVE_PREFIX}${tab}`;
+}
+
+function loadLiveStates(tab) {
+  try {
+    const raw = localStorage.getItem(getLiveStorageKeyForTab(tab));
+    const parsed = raw ? JSON.parse(raw) : {};
+    liveStates[tab] = parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (_) {
+    liveStates[tab] = {};
+  }
+}
+
+function saveLiveStates(tab, value) {
+  liveStates[tab] = value;
+  localStorage.setItem(getLiveStorageKeyForTab(tab), JSON.stringify(value));
+}
+
+function getActiveConfig() {
+  return BRACKETS[activeTab];
+}
+
+function loadResults() {
+  const { baselineResults } = getActiveConfig();
+  actualResults = { ...baselineResults };
+  loadLiveStates(activeTab);
+
+  try {
+    const raw = localStorage.getItem(getStorageKey());
+    if (!raw) return;
+
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== 'object') return;
+
+    Object.keys(saved).forEach(gameId => {
+      const winner = stripSeed(saved[gameId]?.winner || '');
+      if (winner) actualResults[gameId] = { winner };
+    });
+  } catch (_) {
+    // Ignore malformed JSON and keep default values.
+  }
+}
+
+function saveResults() {
+  const compact = {};
+  Object.entries(actualResults).forEach(([id, val]) => {
+    if (val?.winner) compact[id] = { winner: val.winner };
+  });
+  localStorage.setItem(getStorageKey(), JSON.stringify(compact));
+}
+
+function getLoserForGame(game, winner) {
+  const team1 = stripSeed(game.t1);
+  const team2 = stripSeed(game.t2);
+  if (teamMatches(winner, team1)) return team2;
+  if (teamMatches(winner, team2)) return team1;
+  return null;
+}
+
+function getRegionRoundGames(regionGames, round) {
+  return regionGames.filter(g => g.r === round);
+}
+
+function gameStatus(game, eliminatedTeams) {
+  const res = actualResults[game.id];
+  const ptsVal = ROUND_PTS[game.r];
+  const pickTeam = stripSeed(game.pick);
+  const live = liveStates[activeTab]?.[game.id];
+
+  if (live?.statusText) {
+    return {
+      statusClass: 'status-live',
+      statusText: live.statusText,
+      isWin: false,
+      points: 0,
+      played: false,
+      isLoss: false,
+      ppr: ptsVal
+    };
+  }
+
+  if (res && res.winner) {
+    if (teamMatches(res.winner, pickTeam)) {
+      return {
+        statusClass: 'status-correct',
+        statusText: `${pickTeam} (+${ptsVal})`,
+        isWin: true,
+        points: ptsVal,
+        played: true,
+        isLoss: false,
+        ppr: 0
+      };
+    }
+
+    return {
+      statusClass: 'status-wrong',
+      statusText: `${pickTeam} (X)`,
+      isWin: false,
+      points: 0,
+      played: true,
+      isLoss: true,
+      ppr: 0
+    };
+  }
+
+  if (eliminatedTeams.has(pickTeam)) {
+    return {
+      statusClass: 'status-dead',
+      statusText: `${pickTeam} (Dead)`,
+      isWin: false,
+      points: 0,
+      played: false,
+      isLoss: false,
+      ppr: 0
+    };
+  }
+
+  return {
+    statusClass: 'status-pending',
+    statusText: `${pickTeam} (+${ptsVal} PPR)`,
+    isWin: false,
+    points: 0,
+    played: false,
+    isLoss: false,
+    ppr: ptsVal
+  };
+}
+
+function renderTree(region) {
+  const rounds = [0, 1, 2, 3];
+  let html = '<div class="tree-wrap"><div class="tree-grid">';
+
+  rounds.forEach(round => {
+    const games = getRegionRoundGames(region.games, round);
+    html += `<div class="round-col r${round}"><div class="round-title">${ROUND_NAMES[round]}</div>`;
+
+    games.forEach(game => {
+      const pick = stripSeed(game.pick);
+      const winner = actualResults[game.id]?.winner || 'TBD';
+      html += `
+        <div class="match-node">
+          <div>${stripSeed(game.t1)} vs ${stripSeed(game.t2)}</div>
+          <div class="pick-flag">Pick: ${pick}</div>
+          <div>Result: ${winner}</div>
+          <span class="connector-h"></span>
+          <span class="connector-v"></span>
+        </div>`;
+    });
+
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+function renderGameList(region, eliminatedTeams) {
+  let html = '<div class="game-list">';
+
+  region.games.forEach(g => {
+    const status = gameStatus(g, eliminatedTeams);
+    const res = actualResults[g.id];
+    const team1 = stripSeed(g.t1);
+    const team2 = stripSeed(g.t2);
+
+    html += `
+      <div class="game-row game-${status.statusClass.replace('status-', '')}">
+        <div class="matchup">
+          <span class="round-badge">${ROUND_NAMES[g.r]}</span>
+          <span class="matchup-title">${g.t1} vs ${g.t2}</span>
+        </div>
+        <div class="meta-row">
+          <div class="pick-label">Pick: <span class="pick-value">${g.pick}</span></div>
+          <div class="pick-pill ${status.statusClass}">${status.statusText}</div>
+        </div>
+        <div class="result-controls">
+          <button class="result-btn ${res?.winner && teamMatches(res.winner, team1) ? 'active' : ''}" data-action="winner" data-game="${g.id}" data-team="${team1}">${team1}</button>
+          <button class="result-btn ${res?.winner && teamMatches(res.winner, team2) ? 'active' : ''}" data-action="winner" data-game="${g.id}" data-team="${team2}">${team2}</button>
+          <button class="clear-btn" data-action="clear" data-game="${g.id}" title="Clear result">↺</button>
+        </div>
+      </div>`;
+  });
+
+  html += '</div>';
+  return html;
+}
+
+function renderFinals(finalRegion, eliminatedTeams) {
+  let html = `<div class="region-header">${finalRegion.name}</div><div class="finals-body">`;
+
+  finalRegion.games.forEach(game => {
+    const status = gameStatus(game, eliminatedTeams);
+    const res = actualResults[game.id];
+    const team1 = stripSeed(game.t1);
+    const team2 = stripSeed(game.t2);
+
+    html += `
+      <div class="region-card" style="margin: 0; box-shadow: none;">
+        <div class="region-header">${ROUND_NAMES[game.r]}</div>
+        <div class="game-row game-${status.statusClass.replace('status-', '')}">
+          <div class="matchup">
+            <span class="round-badge">${ROUND_NAMES[game.r]}</span>
+            <span class="matchup-title">${game.t1} vs ${game.t2}</span>
+          </div>
+          <div class="meta-row">
+            <div class="pick-label">Pick: <span class="pick-value">${game.pick}</span></div>
+            <div class="pick-pill ${status.statusClass}">${status.statusText}</div>
+          </div>
+          <div class="result-controls">
+            <button class="result-btn ${res?.winner && teamMatches(res.winner, team1) ? 'active' : ''}" data-action="winner" data-game="${game.id}" data-team="${team1}">${team1}</button>
+            <button class="result-btn ${res?.winner && teamMatches(res.winner, team2) ? 'active' : ''}" data-action="winner" data-game="${game.id}" data-team="${team2}">${team2}</button>
+            <button class="clear-btn" data-action="clear" data-game="${game.id}" title="Clear result">↺</button>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  html += '</div>';
+  return html;
+}
+
+function initTracker() {
+  const { regions } = getActiveConfig();
+
+  const eliminatedTeams = new Set();
+  regions.forEach(region => {
+    region.games.forEach(g => {
+      const res = actualResults[g.id];
+      if (!res?.winner) return;
+
+      if (res.loser) {
+        eliminatedTeams.add(stripSeed(res.loser));
+      } else {
+        const loser = getLoserForGame(g, res.winner);
+        if (loser) eliminatedTeams.add(stripSeed(loser));
+      }
+    });
+  });
+
+  let totalPts = 0;
+  let ppr = 0;
+  let wins = 0;
+  let losses = 0;
+  let gamesPlayed = 0;
+
+  regions.forEach(region => {
+    region.games.forEach(g => {
+      const status = gameStatus(g, eliminatedTeams);
+      totalPts += status.points;
+      ppr += status.ppr;
+      if (status.isWin) wins++;
+      if (status.isLoss) losses++;
+      if (status.played) gamesPlayed++;
+    });
+  });
+
+  const normalRegions = regions.slice(0, 4);
+  const finalsRegion = regions[regions.length - 1];
+
+  let regionHtml = '';
+  normalRegions.forEach(region => {
+    regionHtml += `
+      <div class="region-card">
+        <div class="region-header">${region.name}</div>
+        ${renderTree(region)}
+        ${renderGameList(region, eliminatedTeams)}
+      </div>`;
+  });
+
+  document.getElementById('regionContainer').innerHTML = regionHtml;
+  document.getElementById('finalsContainer').innerHTML = renderFinals(finalsRegion, eliminatedTeams);
+
+  document.getElementById('valTotalPts').textContent = totalPts;
+  document.getElementById('valPPR').textContent = ppr;
+  document.getElementById('valMaxPts').textContent = totalPts + ppr;
+  document.getElementById('valWins').textContent = wins;
+  document.getElementById('valLosses').textContent = losses;
+  document.getElementById('valPlayed').textContent = gamesPlayed;
+  document.getElementById('valAccuracy').textContent = gamesPlayed ? `${Math.round((wins / gamesPlayed) * 100)}%` : '0%';
+
+  currentStatsByTab[activeTab] = {
+    totalPts,
+    ppr,
+    maxPts: totalPts + ppr,
+    wins,
+    losses,
+    gamesPlayed
+  };
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === activeTab);
+  });
+
+  if (currentGroupByTab[activeTab]) {
+    renderGroupCompare(currentGroupByTab[activeTab]);
+  }
+}
+
+function exportResults() {
+  const payload = {
+    bracket: activeTab,
+    exportedAt: new Date().toISOString(),
+    results: actualResults
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ncaa-${activeTab}-results.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importResultsFromFile(file) {
+  const reader = new FileReader();
+
+  reader.onload = (evt) => {
+    try {
+      const parsed = JSON.parse(String(evt.target?.result || '{}'));
+      const incomingTab = parsed?.bracket;
+      const incomingResults = parsed?.results;
+
+      if (!incomingResults || typeof incomingResults !== 'object') {
+        alert('Import failed: JSON must include a "results" object.');
+        return;
+      }
+
+      if (incomingTab && BRACKETS[incomingTab]) {
+        activeTab = incomingTab;
+      }
+
+      const clean = {};
+      Object.keys(incomingResults).forEach(gameId => {
+        const winner = stripSeed(incomingResults[gameId]?.winner || '');
+        if (winner) clean[gameId] = { winner };
+      });
+
+      localStorage.setItem(getStorageKey(), JSON.stringify(clean));
+      loadResults();
+      initTracker();
+    } catch (_) {
+      alert('Import failed: invalid JSON file.');
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+function parseDateUS(value) {
+  const [mm, dd, yyyy] = value.split('/').map(Number);
+  return new Date(yyyy, mm - 1, dd);
+}
+
+function formatDateUS(date) {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const yyyy = String(date.getFullYear());
+  return `${mm}/${dd}/${yyyy}`;
+}
+
+function enumerateDates(startDate, endDate) {
+  const start = parseDateUS(startDate);
+  const end = parseDateUS(endDate);
+  const days = [];
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    days.push(formatDateUS(d));
+  }
+  return days;
+}
+
+function getStorageKeyForTab(tab) {
+  return `${STORAGE_KEY_PREFIX}${tab}`;
+}
+
+function buildContestsUrl(cfg, contestDate) {
+  const variables = {
+    sportCode: cfg.sportCode,
+    division: 1,
+    seasonYear: cfg.seasonYear,
+    month: Number(contestDate.slice(0, 2)),
+    contestDate,
+    week: null
+  };
+
+  const query = new URLSearchParams({
+    meta: 'GetContests_web',
+    extensions: NCAA_GET_CONTESTS_EXT,
+    queryName: 'GetContests_web',
+    variables: JSON.stringify(variables)
+  }).toString();
+
+  return `${NCAA_GRAPHQL_BASE}?${query}`;
+}
+
+async function fetchJsonWithFallback(url) {
+  try {
+    const direct = await fetch(url);
+    if (direct.ok) return direct.json();
+  } catch (_) {
+    // Fall through to proxy attempt.
+  }
+
+  const proxyUrl = `${CORS_PROXY_PREFIX}${encodeURIComponent(url)}`;
+  const viaProxy = await fetch(proxyUrl);
+  if (!viaProxy.ok) {
+    throw new Error(`Live fetch failed (${viaProxy.status})`);
+  }
+  return viaProxy.json();
+}
+
+function getGroupIdStorageKey(tab) {
+  return `espn-group-id-${tab}`;
+}
+
+function getChallengeKeyForTab(tab) {
+  return ESPN_CHALLENGE_KEYS[tab];
+}
+
+function formatDiff(value) {
+  if (value > 0) return `+${value}`;
+  return `${value}`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderGroupCompare(groupPayload) {
+  const wrap = document.getElementById('compareTableWrap');
+  const meta = document.getElementById('compareMeta');
+  const stats = currentStatsByTab[activeTab];
+  const entries = Array.isArray(groupPayload?.entries) ? groupPayload.entries : [];
+
+  if (!entries.length) {
+    wrap.innerHTML = '';
+    meta.textContent = 'Group loaded, but no entries were returned.';
+    return;
+  }
+
+  const sorted = [...entries].sort((a, b) => (a?.score?.rank || 999999) - (b?.score?.rank || 999999));
+  const top = sorted.slice(0, 25);
+
+  let rows = '';
+  if (stats) {
+    rows += `
+      <tr class="me-row">
+        <td>-</td>
+        <td>You (this tracker)</td>
+        <td>${stats.totalPts}</td>
+        <td>${stats.ppr}</td>
+        <td>${stats.maxPts}</td>
+        <td>0</td>
+      </tr>`;
+  }
+
+  top.forEach(entry => {
+    const rank = entry?.score?.rank ?? '-';
+    const points = entry?.score?.overallScore ?? 0;
+    const ppr = entry?.score?.possiblePointsRemaining ?? 0;
+    const max = entry?.score?.possiblePointsMax ?? 0;
+    const diff = stats ? points - stats.totalPts : 0;
+    const name = entry?.name || entry?.member?.displayName || 'Entry';
+    const entryId = entry?.id || '';
+    const challengeKey = getChallengeKeyForTab(activeTab);
+    const entryUrl = `https://fantasy.espn.com/games/${challengeKey}/entry?entryID=${encodeURIComponent(entryId)}`;
+
+    rows += `
+      <tr>
+        <td>${rank}</td>
+        <td><a href="${entryUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(name)}</a></td>
+        <td>${points}</td>
+        <td>${ppr}</td>
+        <td>${max}</td>
+        <td>${stats ? formatDiff(diff) : '-'}</td>
+      </tr>`;
+  });
+
+  wrap.innerHTML = `
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Entry</th>
+          <th>Pts</th>
+          <th>PPR</th>
+          <th>Max</th>
+          <th>Vs You</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  meta.textContent = `Group ${groupPayload.groupId} loaded. Showing top ${top.length} entries${stats ? ' plus your tracker row' : ''}.`;
+}
+
+async function loadEspnGroupCompare() {
+  const input = document.getElementById('espnGroupIdInput');
+  const meta = document.getElementById('compareMeta');
+  const groupId = LOCKED_ESPN_GROUP_ID;
+  input.value = groupId;
+
+  const challengeKey = getChallengeKeyForTab(activeTab);
+  const url = `https://gambit-api.fantasy.espn.com/apis/v1/challenges/${challengeKey}/groups/${groupId}?scoringPeriodId=-1&platform=chui&view=group`;
+
+  meta.textContent = 'Loading group standings...';
+  try {
+    const payload = await fetchJsonWithFallback(url);
+    currentGroupByTab[activeTab] = payload;
+    renderGroupCompare(payload);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    meta.textContent = `Failed to load group: ${msg}`;
+  }
+}
+
+function mapContestToGameId(tab, contest) {
+  const teams = contest?.teams || [];
+  if (teams.length !== 2) return null;
+
+  const [a, b] = teams;
+  const nameA = a.nameShort || '';
+  const nameB = b.nameShort || '';
+  const regions = BRACKETS[tab].regions;
+
+  for (const region of regions) {
+    for (const game of region.games) {
+      const matchDirect = teamMatches(nameA, game.t1) && teamMatches(nameB, game.t2);
+      const matchReverse = teamMatches(nameA, game.t2) && teamMatches(nameB, game.t1);
+      if (matchDirect || matchReverse) {
+        return game.id;
+      }
+    }
+  }
+  return null;
+}
+
+function pickWinnerNameForGame(contest, game) {
+  const teams = contest?.teams || [];
+  const winner = teams.find(t => t.isWinner);
+  if (!winner) return null;
+
+  const winnerName = winner.nameShort || '';
+  const team1 = stripSeed(game.t1);
+  const team2 = stripSeed(game.t2);
+
+  if (teamMatches(winnerName, team1)) return team1;
+  if (teamMatches(winnerName, team2)) return team2;
+  return stripSeed(winnerName);
+}
+
+function getLiveStatusText(contest, game) {
+  const teams = contest?.teams || [];
+  if (teams.length !== 2) return null;
+
+  const gameT1 = stripSeed(game.t1);
+  const gameT2 = stripSeed(game.t2);
+  let score1 = null;
+  let score2 = null;
+
+  teams.forEach(team => {
+    const score = team?.score;
+    if (score === null || score === undefined) return;
+    if (teamMatches(team?.nameShort || '', gameT1)) score1 = score;
+    if (teamMatches(team?.nameShort || '', gameT2)) score2 = score;
+  });
+
+  const left = score1 !== null && score1 !== undefined ? score1 : '-';
+  const right = score2 !== null && score2 !== undefined ? score2 : '-';
+  const period = contest?.currentPeriod ? ` P${contest.currentPeriod}` : '';
+  const clock = contest?.contestClock ? ` ${contest.contestClock}` : '';
+  return `LIVE ${left}-${right}${period}${clock}`;
+}
+
+async function updateTabFromLiveFeed(tab) {
+  const cfg = LIVE_CONFIG[tab];
+  if (!cfg) return { updated: 0, scanned: 0 };
+
+  const contests = [];
+  const dates = enumerateDates(cfg.startDate, cfg.endDate);
+
+  for (const date of dates) {
+    const url = buildContestsUrl(cfg, date);
+    const payload = await fetchJsonWithFallback(url);
+    const dayContests = payload?.data?.contests || [];
+    contests.push(...dayContests);
+  }
+
+  const finalContests = contests.filter(c => {
+    const status = String(c?.statusCodeDisplay || '').toLowerCase();
+    const state = String(c?.gameState || '').toLowerCase();
+    return status === 'final' || state === 'f';
+  });
+
+  const regions = BRACKETS[tab].regions;
+  const gameIndex = {};
+  regions.forEach(region => {
+    region.games.forEach(game => {
+      gameIndex[game.id] = game;
+    });
+  });
+
+  let updated = 0;
+  const liveMap = {};
+  const merged = (() => {
+    try {
+      const raw = localStorage.getItem(getStorageKeyForTab(tab));
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  })();
+
+  finalContests.forEach(contest => {
+    const gameId = mapContestToGameId(tab, contest);
+    if (!gameId) return;
+
+    const game = gameIndex[gameId];
+    if (!game) return;
+
+    const winner = pickWinnerNameForGame(contest, game);
+    if (!winner) return;
+
+    const current = merged[gameId]?.winner || OFFICIAL_RESULTS_BY_TAB[tab]?.[gameId]?.winner;
+    if (current && teamMatches(current, winner)) return;
+
+    merged[gameId] = { winner };
+    OFFICIAL_RESULTS_BY_TAB[tab][gameId] = { winner };
+    updated++;
+  });
+
+  contests.forEach(contest => {
+    const status = String(contest?.statusCodeDisplay || '').toLowerCase();
+    const state = String(contest?.gameState || '').toLowerCase();
+    const isFinal = status === 'final' || state === 'f';
+    const isLive = !isFinal && (status === 'live' || state === 'l');
+    if (!isLive) return;
+
+    const gameId = mapContestToGameId(tab, contest);
+    if (!gameId) return;
+
+    const game = gameIndex[gameId];
+    if (!game) return;
+
+    const statusText = getLiveStatusText(contest, game);
+    if (!statusText) return;
+    liveMap[gameId] = { statusText };
+  });
+
+  localStorage.setItem(getStorageKeyForTab(tab), JSON.stringify(merged));
+  saveLiveStates(tab, liveMap);
+  return { updated, scanned: finalContests.length };
+}
+
+async function updateResultsFromLive() {
+  const btn = document.getElementById('btnUpdateResults');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Updating...';
+
+  try {
+    const men = await updateTabFromLiveFeed('men');
+    const women = await updateTabFromLiveFeed('women');
+
+    loadResults();
+    initTracker();
+
+    const total = men.updated + women.updated;
+    if (total > 0) {
+      alert(`Live sync complete. Updated ${men.updated} Men and ${women.updated} Women games.`);
+    } else {
+      alert('Live sync complete. No new finalized games matched your bracket yet.');
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    alert(`Live sync failed: ${msg}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+function updateResultsFromOfficial() {
+  const official = OFFICIAL_RESULTS_BY_TAB[activeTab] || {};
+  const officialIds = Object.keys(official);
+
+  if (officialIds.length === 0) {
+    alert(`No official ${BRACKETS[activeTab].label} results are available to apply yet.`);
+    return;
+  }
+
+  let changed = 0;
+  officialIds.forEach(gameId => {
+    const winner = stripSeed(official[gameId]?.winner || '');
+    if (!winner) return;
+
+    if (!actualResults[gameId] || !teamMatches(actualResults[gameId].winner, winner)) {
+      actualResults[gameId] = { winner };
+      changed++;
+    }
+  });
+
+  if (changed > 0) {
+    saveResults();
+    initTracker();
+    alert(`Updated ${changed} ${BRACKETS[activeTab].label} game result${changed === 1 ? '' : 's'} from official data.`);
+    return;
+  }
+
+  alert(`Your ${BRACKETS[activeTab].label} tab is already up to date with official results.`);
+}
+
+function bindEvents() {
+  document.body.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    if (target.classList.contains('tab-btn')) {
+      const tab = target.dataset.tab;
+      if (!tab || !BRACKETS[tab]) return;
+      activeTab = tab;
+      document.getElementById('espnGroupIdInput').value = LOCKED_ESPN_GROUP_ID;
+      loadResults();
+      initTracker();
+      return;
+    }
+
+    if (target.id === 'btnLoadGroup') {
+      loadEspnGroupCompare();
+      return;
+    }
+
+    if (target.id === 'btnReset') {
+      localStorage.removeItem(getStorageKey());
+      localStorage.removeItem(getLiveStorageKeyForTab(activeTab));
+      loadResults();
+      initTracker();
+      return;
+    }
+
+    if (target.id === 'btnUpdateResults') {
+      updateResultsFromLive();
+      return;
+    }
+
+    if (target.id === 'btnExport') {
+      exportResults();
+      return;
+    }
+
+    if (target.id === 'btnImport') {
+      document.getElementById('importFile').click();
+      return;
+    }
+
+    const gameId = target.dataset.game;
+    const action = target.dataset.action;
+    if (!gameId || !action) return;
+
+    if (action === 'winner') {
+      const winner = target.dataset.team;
+      if (!winner) return;
+      actualResults[gameId] = { winner };
+      if (liveStates[activeTab]?.[gameId]) {
+        delete liveStates[activeTab][gameId];
+        saveLiveStates(activeTab, liveStates[activeTab]);
+      }
+      saveResults();
+      initTracker();
+      return;
+    }
+
+    if (action === 'clear') {
+      delete actualResults[gameId];
+      if (liveStates[activeTab]?.[gameId]) {
+        delete liveStates[activeTab][gameId];
+        saveLiveStates(activeTab, liveStates[activeTab]);
+      }
+      saveResults();
+      initTracker();
+    }
+  });
+
+  document.getElementById('importFile').addEventListener('change', (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    if (!input.files || input.files.length === 0) return;
+
+    importResultsFromFile(input.files[0]);
+    input.value = '';
+  });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('espnGroupIdInput').value = LOCKED_ESPN_GROUP_ID;
+  loadResults();
+  bindEvents();
+  initTracker();
+});
+</script>
+</body>
+</html>
