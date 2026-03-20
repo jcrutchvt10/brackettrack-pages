@@ -1425,6 +1425,8 @@ const LOCKED_ESPN_GROUP_ID = 'ff8fedde-7a81-467c-8b5b-a735ddbba0c5';
 const LOCKED_ESPN_WOMEN_GROUP_ID = 'ff45e593-4dc8-492a-99b5-32f585c85494';
 const ESPN_GROUP_NOT_AVAILABLE = '__ESPN_GROUP_NOT_AVAILABLE__';
 const ESPN_GROUP_CACHE_KEY_PREFIX = 'espn_group_cache_v1_';
+const ROAST_MODE_STORAGE_KEY = 'roast-mode-enabled';
+const ROAST_MODE_DEFAULT = true;
 function getGroupIdForTab(tab) {
   return tab === 'women' ? LOCKED_ESPN_WOMEN_GROUP_ID : LOCKED_ESPN_GROUP_ID;
 }
@@ -1655,6 +1657,7 @@ let liveStates = { men: {}, women: {} };
 let currentStatsByTab = { men: null, women: null };
 let currentGroupByTab = { men: null, women: null };
 let selectedPerspectiveByTab = { men: TRACKER_PERSPECTIVE_VALUE, women: TRACKER_PERSPECTIVE_VALUE };
+let roastModeEnabled = ROAST_MODE_DEFAULT;
 let autoPollTimer = null;
 let liveSyncInFlight = false;
 let syncStatus = {
@@ -2205,6 +2208,17 @@ function savePerspective(tab, value) {
   localStorage.setItem(getPerspectiveStorageKey(tab), value);
 }
 
+function loadRoastModeSetting() {
+  const raw = localStorage.getItem(ROAST_MODE_STORAGE_KEY);
+  if (raw === null) {
+    roastModeEnabled = ROAST_MODE_DEFAULT;
+    localStorage.setItem(ROAST_MODE_STORAGE_KEY, String(ROAST_MODE_DEFAULT));
+    return;
+  }
+
+  roastModeEnabled = raw !== 'false';
+}
+
 function getChallengeKeyForTab(tab) {
   return ESPN_CHALLENGE_KEYS[tab];
 }
@@ -2581,25 +2595,17 @@ function generateStandingsCommentary(entries, myStats) {
     () => `${leaderName} is running away with this like they're escaping a horror movie. Terrifying.`,
     () => `${leaderName} really said "I'm built different" and the standings prove it. Respect.`,
     () => `${leaderName} is on a different plane of existence. We're just watching greatness here.`,
-    () => `${leaderName} is handing out emotional damage like it's a buy-one-get-one special.`,
-    () => `${leaderName} is up top living in a penthouse while the rest of us argue in the parking lot.`,
-    () => `${leaderName} is so far ahead this leaderboard needs long-distance charges.`,
     
     // Gap comments (if there's a big gap)
     () => gap > 200 ? `The gap between 1st and the pack is wider than my attention span. Brutal.` : null,
     () => gap > 150 ? `${leaderName} left the rest of us in the dust. We can't even see them anymore.` : null,
     () => gap > 100 ? `It's not a blowout yet, but ${leaderName} is getting comfortable up there.` : null,
-    () => gap > 180 ? `At this point catching ${leaderName} requires miracles, math, and maybe a legal team.` : null,
-    () => gap > 120 ? `That gap is old enough to vote. Someone close it before it gets worse.` : null,
     
     // Mid-pack trash talk
     () => `The middle of the standings is a bloodbath. Everyone's within striking distance—which means nobody's safe.`,
     () => `The gap between 1st and 10th could fit a whole tournament bracket. Sheesh.`,
     () => `It's anyone's game down here in the mid-pack. Just pure chaos and bracket luck.`,
     () => `The bottom 3 are fighting like seagulls over french fries. Absolutely ruthless.`,
-    () => `Mid-pack right now is just people refreshing scores and pretending they meant to pick that upset.`,
-    () => `This leaderboard has more mood swings than a group chat after midnight.`,
-    () => `Some of these picks aged like milk in a hot car.`,
     
     // Personal comments (if user data available)
     () => myRank && myRank === 1 ? `👑 YOU ARE THE CHAMPION. Don't screw this up.` : null,
@@ -2607,23 +2613,35 @@ function generateStandingsCommentary(entries, myStats) {
     () => myRank && myRank <= 5 ? `Not bad! You're in the hunt. Keep those picks sharp.` : null,
     () => myRank && myRank <= 10 ? `You're hanging in there. The comeback starts now (probably won't happen but you never know).` : null,
     () => myRank && myRank > 10 ? `Hey, there's still time. Stranger things have happened. Actually, no they haven't.` : null,
-    () => myRank && myRank === 1 ? `Top spot secured. Talk your trash now before the next round humbles everyone.` : null,
-    () => myRank && myRank <= 3 ? `You're on the podium, which is great because pressure only makes people weird.` : null,
-    () => myRank && myRank > 8 ? `You're not dead, but your bracket is currently on life support and a prayer.` : null,
-    () => myRank && myRank > 12 ? `You are in the character-building portion of this tournament. Stay strong.` : null,
     
     // Meta comments
     () => `These brackets are playing mind games. ${entries.length} people, same games, completely different outcomes.`,
     () => `Whoever predicted this standings order is a liar. We're all just gambling at this point.`,
     () => `The butterfly effect is real. One wrong pick in Round 1 and you're bleeding points.`,
     () => `Chart behavior like you're a poker player trying to read tells. These rankings are TENSE.`,
+  ];
+
+  const roastCommentaries = [
+    () => `${leaderName} is handing out emotional damage like it's a buy-one-get-one special.`,
+    () => `${leaderName} is up top living in a penthouse while the rest of us argue in the parking lot.`,
+    () => `${leaderName} is so far ahead this leaderboard needs long-distance charges.`,
+    () => gap > 180 ? `At this point catching ${leaderName} requires miracles, math, and maybe a legal team.` : null,
+    () => gap > 120 ? `That gap is old enough to vote. Someone close it before it gets worse.` : null,
+    () => `Mid-pack right now is just people refreshing scores and pretending they meant to pick that upset.`,
+    () => `This leaderboard has more mood swings than a group chat after midnight.`,
+    () => `Some of these picks aged like milk in a hot car.`,
+    () => myRank && myRank === 1 ? `Top spot secured. Talk your trash now before the next round humbles everyone.` : null,
+    () => myRank && myRank <= 3 ? `You're on the podium, which is great because pressure only makes people weird.` : null,
+    () => myRank && myRank > 8 ? `You're not dead, but your bracket is currently on life support and a prayer.` : null,
+    () => myRank && myRank > 12 ? `You are in the character-building portion of this tournament. Stay strong.` : null,
     () => `One coin-flip game can turn this whole board into therapy material.`,
     () => `Every "easy pick" this year has been a trap with good marketing.`,
     () => `This season is proof that confidence and correctness are barely on speaking terms.`,
   ];
 
   // Filter out null values and pick a random one
-  const validCommentaries = commentaries.map(fn => fn()).filter(c => c !== null);
+  const pool = roastModeEnabled ? [...commentaries, ...roastCommentaries] : commentaries;
+  const validCommentaries = pool.map(fn => fn()).filter(c => c !== null);
   return validCommentaries.length > 0 
     ? validCommentaries[Math.floor(Math.random() * validCommentaries.length)]
     : `${leaderName} is winning. That's pretty much all there is to it.`;
