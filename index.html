@@ -171,6 +171,45 @@
     z-index: 1;
   }
 
+  .bracket-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .bracket-stat-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 56px;
+    padding: 8px 12px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    box-shadow: 0 4px 12px rgba(30, 50, 90, 0.08), inset 0 1px 0 rgba(255,255,255,0.80);
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .bracket-stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1;
+  }
+
+  .bracket-stat-label {
+    font-size: 0.70rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-500);
+    text-align: center;
+  }
+
   .sync-chip {
     display: inline-flex;
     align-items: center;
@@ -1280,6 +1319,7 @@
           <span id="syncChipText">Waiting for first refresh</span>
         </div>
       </div>
+      <div class="bracket-stats" id="bracketStats" style="display:none"></div>
     </div>
     <div class="toolbar">
       <button class="action-btn" id="btnUpdateResults">Update Results</button>
@@ -2390,8 +2430,11 @@ function updateStandings() {
   const groupData = currentGroupByTab[activeTab];
   if (!groupData?.entries?.length) {
     document.getElementById('standingsCard').style.display = 'none';
+    document.getElementById('bracketStats').style.display = 'none';
     return;
   }
+
+  updateBracketStats(groupData);
 
   const myStats = getActivePerspectiveStats(currentStatsByTab[activeTab]);
   const entries = [...groupData.entries].sort((a, b) => (a?.score?.rank || 999999) - (b?.score?.rank || 999999));
@@ -2420,7 +2463,62 @@ function updateStandings() {
   document.getElementById('standingsCard').style.display = '';
 }
 
-function generateStandingsCommentary(entries, myStats) {
+function updateBracketStats(groupData) {
+  const entries = groupData.entries || [];
+  if (!entries.length) return;
+
+  const scores = entries.map(e => e?.score?.overallScore ?? 0).filter(s => s >= 0);
+  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+  const medianScore = scores.length ? scores.sort((a, b) => a - b)[Math.floor(scores.length / 2)] : 0;
+  const maxScore = Math.max(...scores);
+
+  // Calculate perfect brackets (entries with 0 losses and still in tournament or all correct)
+  const perfectBrackets = entries.filter(e => {
+    const wins = e?.score?.record?.wins ?? 0;
+    const losses = e?.score?.record?.losses ?? 0;
+    // Perfect = either no losses yet OR could theoretically still go undefeated
+    return losses === 0 && wins > 0;
+  }).length;
+
+  // Calculate percentiles for each entry
+  const entriesWithPercentile = entries.map((entry, idx) => {
+    const score = entry?.score?.overallScore ?? 0;
+    const betterCount = scores.filter(s => s > score).length;
+    const percentile = scores.length > 0 ? Math.round((100 * (scores.length - betterCount)) / scores.length) : 0;
+    return { ...entry, percentile };
+  });
+
+  // Calculate average bracket strength (how spread out are the scores)
+  const scoreSpread = maxScore - Math.min(...scores);
+  const closeRace = scoreSpread < 100 ? 'Very Close' : scoreSpread < 200 ? 'Competitive' : 'Spread Out';
+
+  // Render stats
+  const statsContainer = document.getElementById('bracketStats');
+  statsContainer.innerHTML = `
+    <div class="bracket-stat-chip">
+      <div class="bracket-stat-value">${perfectBrackets}</div>
+      <div class="bracket-stat-label">Perfect Brackets</div>
+    </div>
+    <div class="bracket-stat-chip">
+      <div class="bracket-stat-value">${entries.length}</div>
+      <div class="bracket-stat-label">Total Entries</div>
+    </div>
+    <div class="bracket-stat-chip">
+      <div class="bracket-stat-value">${avgScore}</div>
+      <div class="bracket-stat-label">Avg Score</div>
+    </div>
+    <div class="bracket-stat-chip">
+      <div class="bracket-stat-value">${scoreSpread}</div>
+      <div class="bracket-stat-label">Point Gap</div>
+    </div>
+  `;
+  statsContainer.style.display = 'grid';
+
+  // Store percentiles on entries for later use if needed
+  currentGroupByTab[activeTab]._entriesWithPercentile = entriesWithPercentile;
+}
+
+
   if (!entries.length) return 'Waiting for standings data...';
 
   const leader = entries[0];
