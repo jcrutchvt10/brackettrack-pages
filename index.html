@@ -559,6 +559,7 @@ const ESPN_CHALLENGE_KEYS = {
   women: 'tournament-challenge-bracket-women-2026'
 };
 const LOCKED_ESPN_GROUP_ID = 'ff8fedde-7a81-467c-8b5b-a735ddbba0c5';
+const AUTO_POLL_INTERVAL_MS = 120000;
 
 const MEN_REGIONS = [
   {
@@ -781,6 +782,8 @@ let actualResults = {};
 let liveStates = { men: {}, women: {} };
 let currentStatsByTab = { men: null, women: null };
 let currentGroupByTab = { men: null, women: null };
+let autoPollTimer = null;
+let liveSyncInFlight = false;
 
 function stripSeed(name) {
   return (name || '').replace(/\s*\(\d+\)/g, '').trim();
@@ -1512,11 +1515,17 @@ async function updateTabFromLiveFeed(tab) {
   return { updated, scanned: finalContests.length };
 }
 
-async function updateResultsFromLive() {
+async function runLiveSync(options = {}) {
+  const { showAlerts = false, showButtonBusy = false } = options;
+  if (liveSyncInFlight) return;
+  liveSyncInFlight = true;
+
   const btn = document.getElementById('btnUpdateResults');
-  const originalLabel = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = 'Updating...';
+  const originalLabel = btn?.textContent || '';
+  if (showButtonBusy && btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+  }
 
   try {
     const men = await updateTabFromLiveFeed('men');
@@ -1525,19 +1534,43 @@ async function updateResultsFromLive() {
     loadResults();
     initTracker();
 
-    const total = men.updated + women.updated;
-    if (total > 0) {
-      alert(`Live sync complete. Updated ${men.updated} Men and ${women.updated} Women games.`);
-    } else {
-      alert('Live sync complete. No new finalized games matched your bracket yet.');
+    if (showAlerts) {
+      const total = men.updated + women.updated;
+      if (total > 0) {
+        alert(`Live sync complete. Updated ${men.updated} Men and ${women.updated} Women games.`);
+      } else {
+        alert('Live sync complete. No new finalized games matched your bracket yet.');
+      }
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    alert(`Live sync failed: ${msg}`);
+    if (showAlerts) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Live sync failed: ${msg}`);
+    }
   } finally {
-    btn.disabled = false;
-    btn.textContent = originalLabel;
+    if (showButtonBusy && btn) {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+    liveSyncInFlight = false;
   }
+}
+
+async function updateResultsFromLive() {
+  return runLiveSync({ showAlerts: true, showButtonBusy: true });
+}
+
+function startAutoPolling() {
+  if (autoPollTimer) {
+    clearInterval(autoPollTimer);
+  }
+
+  runLiveSync({ showAlerts: false, showButtonBusy: false });
+
+  autoPollTimer = setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    runLiveSync({ showAlerts: false, showButtonBusy: false });
+  }, AUTO_POLL_INTERVAL_MS);
 }
 
 function updateResultsFromOfficial() {
@@ -1653,6 +1686,7 @@ window.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   initTracker();
   loadEspnGroupCompare();
+  startAutoPolling();
 });
 </script>
 </body>
