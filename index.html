@@ -2514,7 +2514,7 @@ function updateBracketStats(groupData) {
   currentGroupByTab[activeTab]._entriesWithPercentile = entriesWithPercentile;
 }
 
-
+function generateStandingsCommentary(entries, myStats) {
   if (!entries.length) return 'Waiting for standings data...';
 
   const leader = entries[0];
