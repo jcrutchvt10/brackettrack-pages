@@ -309,6 +309,87 @@
     margin-bottom: 18px;
   }
 
+  .standings-card {
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 28px;
+    padding: 18px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow-1);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+
+  .standings-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink-900);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .standings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .standings-entry {
+    display: grid;
+    grid-template-columns: 30px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.50);
+    border-radius: 16px;
+    font-size: 0.88rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.70);
+  }
+
+  .standings-rank {
+    font-weight: 800;
+    font-size: 0.92rem;
+    color: var(--primary);
+    text-align: center;
+  }
+
+  .standings-entry.is-me {
+    background: rgba(11, 87, 208, 0.14);
+    border-color: rgba(255, 255, 255, 0.65);
+    box-shadow: 0 4px 12px rgba(11, 87, 208, 0.14), inset 0 1px 0 rgba(255,255,255,0.75);
+  }
+
+  .standings-name {
+    font-weight: 600;
+    color: var(--ink-900);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .standings-score {
+    font-weight: 700;
+    color: var(--ink-700);
+    text-align: right;
+    min-width: 60px;
+  }
+
+  .standings-commentary {
+    padding: 14px 12px;
+    background: rgba(255, 160, 30, 0.08);
+    border: 1px solid rgba(255, 160, 30, 0.25);
+    border-radius: 16px;
+    font-size: 0.84rem;
+    font-style: italic;
+    color: var(--ink-700);
+    line-height: 1.5;
+  }
+
   .compare-card {
     background: rgba(255, 255, 255, 0.18);
     border: 1px solid rgba(255, 255, 255, 0.65);
@@ -1012,6 +1093,31 @@
       border-color: rgba(255,255,255,0.18);
       box-shadow: 0 4px 14px rgba(11, 87, 208, 0.25), inset 0 1px 0 rgba(255,255,255,0.16);
     }
+
+    .standings-card {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.12);
+      box-shadow: var(--shadow-1);
+    }
+
+    .standings-entry {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.10);
+      color: var(--ink-900);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .standings-entry.is-me {
+      background: rgba(11, 87, 208, 0.18);
+      border-color: rgba(255, 255, 255, 0.14);
+      box-shadow: 0 4px 12px rgba(11, 87, 208, 0.22), inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+
+    .standings-commentary {
+      background: rgba(255, 160, 30, 0.06);
+      border-color: rgba(255, 160, 30, 0.15);
+      color: var(--ink-700);
+    }
   }
 
   /* ── PWA Install Modal ── */
@@ -1222,6 +1328,12 @@
       <div class="stat-value" id="valAccuracy">0%</div>
       <div class="stat-label">Pick Accuracy</div>
     </div>
+  </div>
+
+  <div class="standings-card" id="standingsCard" style="display:none">
+    <div class="standings-title" id="standingsTitle">🏆 Leaderboard</div>
+    <div class="standings-list" id="standingsList"></div>
+    <div class="standings-commentary" id="standingsCommentary"></div>
   </div>
 
   <div class="compare-card">
@@ -1881,10 +1993,8 @@ function initTracker() {
 
   if (currentGroupByTab[activeTab]) {
     renderGroupCompare(currentGroupByTab[activeTab]);
+    updateStandings();
   }
-}
-
-function exportResults() {
   const payload = {
     bracket: activeTab,
     exportedAt: new Date().toISOString(),
@@ -2176,6 +2286,7 @@ function refreshActivePerspectiveView() {
 
   if (currentGroupByTab[activeTab]) {
     renderGroupCompare(currentGroupByTab[activeTab]);
+    updateStandings();
   }
 }
 
@@ -2274,6 +2385,92 @@ function renderGroupCompare(groupPayload) {
   wrap.innerHTML = `<div class="compare-card-grid">${cards}</div>`;
 
   meta.textContent = `Group ${groupPayload.groupId} loaded. Showing top ${top.length} entries${stats ? ' plus your tracker row' : ''}.`;
+}
+
+function updateStandings() {
+  const groupData = currentGroupByTab[activeTab];
+  if (!groupData?.entries?.length) {
+    document.getElementById('standingsCard').style.display = 'none';
+    return;
+  }
+
+  const myStats = getActivePerspectiveStats(currentStatsByTab[activeTab]);
+  const entries = [...groupData.entries].sort((a, b) => (a?.score?.rank || 999999) - (b?.score?.rank || 999999));
+  const topEntries = entries.slice(0, 8);
+
+  // Render standings list
+  const standingsList = document.getElementById('standingsList');
+  let listHtml = '';
+  topEntries.forEach((entry, idx) => {
+    const rank = entry?.score?.rank ?? '-';
+    const points = entry?.score?.overallScore ?? 0;
+    const name = entry?.name || entry?.member?.displayName || 'Entry';
+    const isMe = myStats && points === myStats.totalPts;
+    const meClass = isMe ? 'is-me' : '';
+    listHtml += `<div class="standings-entry ${meClass}">
+      <div class="standings-rank">#${rank}</div>
+      <div class="standings-name" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+      <div class="standings-score">${points}</div>
+    </div>`;
+  });
+  standingsList.innerHTML = listHtml;
+
+  // Generate commentary
+  const commentary = generateStandingsCommentary(topEntries, myStats);
+  document.getElementById('standingsCommentary').textContent = commentary;
+  document.getElementById('standingsCard').style.display = '';
+}
+
+function generateStandingsCommentary(entries, myStats) {
+  if (!entries.length) return 'Waiting for standings data...';
+
+  const leader = entries[0];
+  const leaderPoints = leader?.score?.overallScore ?? 0;
+  const leaderName = leader?.name || 'The Leader';
+
+  // Build context
+  const myRank = myStats ? entries.findIndex(e => e?.score?.overallScore === myStats.totalPts) + 1 : null;
+  const myPoints = myStats?.totalPts ?? 0;
+  const gap = myStats ? leaderPoints - myPoints : leaderPoints;
+
+  const commentaries = [
+    // Leader comments
+    () => `${leaderName} is absolutely COOKING right now. The rest of us are just playing for second place.`,
+    () => `🔥 Hot take: ${leaderName} has achieved godhood. The bracket gods smile upon them.`,
+    () => `${leaderName} is running away with this like they're escaping a horror movie. Terrifying.`,
+    () => `${leaderName} really said "I'm built different" and the standings prove it. Respect.`,
+    () => `${leaderName} is on a different plane of existence. We're just watching greatness here.`,
+    
+    // Gap comments (if there's a big gap)
+    () => gap > 200 ? `The gap between 1st and the pack is wider than my attention span. Brutal.` : null,
+    () => gap > 150 ? `${leaderName} left the rest of us in the dust. We can't even see them anymore.` : null,
+    () => gap > 100 ? `It's not a blowout yet, but ${leaderName} is getting comfortable up there.` : null,
+    
+    // Mid-pack trash talk
+    () => `The middle of the standings is a bloodbath. Everyone's within striking distance—which means nobody's safe.`,
+    () => `The gap between 1st and 10th could fit a whole tournament bracket. Sheesh.`,
+    () => `It's anyone's game down here in the mid-pack. Just pure chaos and bracket luck.`,
+    () => `The bottom 3 are fighting like seagulls over french fries. Absolutely ruthless.`,
+    
+    // Personal comments (if user data available)
+    () => myRank && myRank === 1 ? `👑 YOU ARE THE CHAMPION. Don't screw this up.` : null,
+    () => myRank && myRank === 2 ? `You're so close to the top. ${gap} points away from glory...` : null,
+    () => myRank && myRank <= 5 ? `Not bad! You're in the hunt. Keep those picks sharp.` : null,
+    () => myRank && myRank <= 10 ? `You're hanging in there. The comeback starts now (probably won't happen but you never know).` : null,
+    () => myRank && myRank > 10 ? `Hey, there's still time. Stranger things have happened. Actually, no they haven't.` : null,
+    
+    // Meta comments
+    () => `These brackets are playing mind games. ${entries.length} people, same games, completely different outcomes.`,
+    () => `Whoever predicted this standings order is a liar. We're all just gambling at this point.`,
+    () => `The butterfly effect is real. One wrong pick in Round 1 and you're bleeding points.`,
+    () => `Chart behavior like you're a poker player trying to read tells. These rankings are TENSE.`,
+  ];
+
+  // Filter out null values and pick a random one
+  const validCommentaries = commentaries.map(fn => fn()).filter(c => c !== null);
+  return validCommentaries.length > 0 
+    ? validCommentaries[Math.floor(Math.random() * validCommentaries.length)]
+    : `${leaderName} is winning. That's pretty much all there is to it.`;
 }
 
 async function loadEspnGroupCompare() {
